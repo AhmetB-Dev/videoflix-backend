@@ -7,6 +7,11 @@ from rest_framework import serializers
 GENERIC_ERROR = "Please check your input and try again."
 
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+
 class RegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
