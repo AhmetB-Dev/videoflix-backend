@@ -35,6 +35,10 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://127.0.0.1:5500",
+)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -60,6 +64,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_rq",
     "corsheaders",
+    "users",
 ]
 
 MIDDLEWARE = [
