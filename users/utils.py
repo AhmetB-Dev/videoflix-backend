@@ -4,12 +4,32 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
 from rest_framework_simplejwt.tokens import RefreshToken
+
+
+def blacklist_refresh_token(token):
+    refresh = RefreshToken(token)
+    refresh.blacklist()
+
+
+def delete_auth_cookies(response):
+    response.delete_cookie(settings.JWT_ACCESS_COOKIE)
+    response.delete_cookie(settings.JWT_REFRESH_COOKIE)
+
+
+def create_access_token(refresh_token):
+    refresh = RefreshToken(refresh_token)
+    return str(refresh.access_token)
 
 
 def create_jwt_tokens(user):
     refresh = RefreshToken.for_user(user)
     return str(refresh.access_token), str(refresh)
+
+
+def set_access_cookie(response, access_token):
+    _set_access_cookie(response, access_token)
 
 
 def set_auth_cookies(response, access_token, refresh_token):
@@ -18,24 +38,26 @@ def set_auth_cookies(response, access_token, refresh_token):
 
 
 def _set_access_cookie(response, token):
+    max_age = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()
     response.set_cookie(
         settings.JWT_ACCESS_COOKIE,
         token,
         httponly=True,
         secure=settings.JWT_COOKIE_SECURE,
         samesite=settings.JWT_COOKIE_SAMESITE,
-        max_age=30 * 60,
+        max_age=int(max_age),
     )
 
 
 def _set_refresh_cookie(response, token):
+    max_age = settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()
     response.set_cookie(
         settings.JWT_REFRESH_COOKIE,
         token,
         httponly=True,
         secure=settings.JWT_COOKIE_SECURE,
         samesite=settings.JWT_COOKIE_SAMESITE,
-        max_age=24 * 60 * 60,
+        max_age=int(max_age),
     )
 
 
@@ -59,6 +81,7 @@ def send_activation_email(user, uid, token):
 def create_activation_email(recipient, context):
     text_body = render_to_string("emails/activation_email.txt", context)
     html_body = render_to_string("emails/activation_email.html", context)
+
     email = EmailMultiAlternatives(
         subject="Confirm your email",
         body=text_body,
