@@ -1,9 +1,6 @@
 Dear user,
 
-Thank you for registering with Videoflix.
-
-To complete your registration and verify your email address,
-please open the following link:
+Thank you for registering with Videoflix. To complete your registration and verify your email address, please open the following link:
 
 {{ activation_url }}
 

@@ -1,5 +1,7 @@
 """Authentication, token, cookie, and email helper functions used by user views."""
 
+from email.message import MIMEPart
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -44,7 +46,23 @@ def create_password_reset_email(recipient, context):
         to=[recipient],
     )
     email.attach_alternative(html_body, "text/html")
+    attach_inline_logo(email)
     return email
+
+
+def attach_inline_logo(email):
+    """Embed the Videoflix logo as a Django 6 compatible MIME part."""
+    logo_path = settings.BASE_DIR / "users/static/users/images/videoflix_logo.png"
+    logo = MIMEPart()
+    logo.set_content(
+        logo_path.read_bytes(),
+        maintype="image",
+        subtype="png",
+        disposition="inline",
+        cid="<videoflix-logo>",
+        filename="videoflix_logo.png",
+    )
+    email.attach(logo)
 
 
 def blacklist_refresh_token(token):
@@ -139,6 +157,7 @@ def create_activation_email(recipient, context):
         to=[recipient],
     )
     email.attach_alternative(html_body, "text/html")
+    attach_inline_logo(email)
     return email
 
 

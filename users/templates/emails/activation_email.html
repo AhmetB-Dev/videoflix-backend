@@ -5,46 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirm your email</title>
 </head>
-
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; color: #535456;">
-    <div style="max-width: 650px; margin: 0 auto; padding: 40px 24px;">
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="color: #2e3edf; margin: 0; font-size: 42px;">
-                VIDEOFLIX
-            </h1>
-        </div>
-
-        <p>Dear user,</p>
-
-        <p>
-            Thank you for registering with
-            <strong style="color: #2e3edf;">Videoflix</strong>.
-            To complete your registration and verify your email address,
-            please click the button below:
-        </p>
-
-        <div style="margin: 32px 0;">
-            <a href="{{ activation_url }}"
-               style="
-                    display: inline-block;
-                    background: #2e3edf;
-                    color: #ffffff;
-                    text-decoration: none;
-                    padding: 14px 28px;
-                    border-radius: 28px;
-                    font-weight: 700;
-               ">
-                Activate account
-            </a>
-        </div>
-
-        <p>
-            If you did not create an account with us,
-            please disregard this email.
-        </p>
-
-        <p style="margin-top: 32px;">Best regards,</p>
-        <p>Your Videoflix Team.</p>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; color: #535456;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width: 100%; background-color: #ffffff;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width: 100%; max-width: 650px;">
+                    <tr>
+                        <td align="center" style="padding: 0 0 36px 0;">
+                            <img src="cid:videoflix-logo" width="251" alt="Videoflix" style="display: block; width: 251px; max-width: 100%; height: auto; border: 0;">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="font-size: 18px; line-height: 1.55; color: #535456;">
+                            <p style="margin: 0 0 4px 0;">Dear user,</p>
+                            <p style="margin: 0 0 28px 0;">
+                                Thank you for registering with <span style="color: #2e3edf;">Videoflix</span>. To complete your registration and verify your email address, please click the link below:
+                            </p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 28px 0;">
+                                <tr>
+                                    <td bgcolor="#2e3edf" style="border-radius: 28px;">
+                                        <a href="{{ activation_url }}" style="display: inline-block; padding: 14px 28px; font-size: 18px; line-height: 22px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 28px;">
+                                            Activate account
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin: 0 0 28px 0;">If you did not create an account with us, please disregard this email.</p>
+                            <p style="margin: 0 0 28px 0;">Best regards,</p>
+                            <p style="margin: 0;">Your Videoflix Team.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
