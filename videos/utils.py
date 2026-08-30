@@ -6,7 +6,6 @@ from django.shortcuts import get_object_or_404
 
 from .models import Video
 
-
 ALLOWED_RESOLUTIONS = {"480p", "720p", "1080p"}
 
 VIDEO_LIST_CACHE_KEY = "video_list"

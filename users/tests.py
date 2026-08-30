@@ -6,7 +6,6 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase
 
-
 TEST_MAILERS = {
     "default": {
         "BACKEND": "django.core.mail.backends.locmem.EmailBackend",

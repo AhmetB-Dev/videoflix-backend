@@ -7,3 +7,5 @@ __pycache__/
 media/
 static/
 .DS_Store
+.coverage
+htmlcov/

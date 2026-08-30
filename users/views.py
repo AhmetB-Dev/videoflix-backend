@@ -1,10 +1,8 @@
 from django.conf import settings
-
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 
 from .serializers import (
     LoginSerializer,
@@ -15,8 +13,6 @@ from .serializers import (
 from .utils import (
     activate_user,
     authenticate_user,
-    blacklist_refresh_token,
-    create_access_token,
     create_activation_credentials,
     create_jwt_tokens,
     create_password_reset_credentials,
@@ -28,11 +24,10 @@ from .utils import (
     send_password_reset_email,
     set_access_cookie,
     set_auth_cookies,
-    update_user_password,
     try_blacklist_refresh_token,
     try_create_access_token,
+    update_user_password,
 )
-
 
 MISSING_REFRESH_TOKEN = {"detail": "Refresh token is missing."}
 INVALID_REFRESH_TOKEN = {"detail": "Invalid refresh token."}
@@ -82,15 +77,9 @@ class LogoutView(APIView):
     def post(self, request):
         token = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
         if not token:
-            return Response(
-                MISSING_REFRESH_TOKEN,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response(MISSING_REFRESH_TOKEN, status=status.HTTP_400_BAD_REQUEST)
         if not try_blacklist_refresh_token(token):
-            return Response(
-                INVALID_REFRESH_TOKEN,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response(INVALID_REFRESH_TOKEN, status=status.HTTP_400_BAD_REQUEST)
         response = Response({"detail": "Logout successful!"})
         delete_auth_cookies(response)
         return response
@@ -102,16 +91,10 @@ class RefreshTokenView(APIView):
     def post(self, request):
         token = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
         if not token:
-            return Response(
-                MISSING_REFRESH_TOKEN,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response(MISSING_REFRESH_TOKEN, status=status.HTTP_400_BAD_REQUEST)
         access_token = try_create_access_token(token)
         if access_token is None:
-            return Response(
-                INVALID_REFRESH_TOKEN,
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return Response(INVALID_REFRESH_TOKEN, status=status.HTTP_401_UNAUTHORIZED)
         response = Response({"detail": "Token refreshed", "access": access_token})
         set_access_cookie(response, access_token)
         return response
