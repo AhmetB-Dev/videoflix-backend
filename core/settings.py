@@ -26,6 +26,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"

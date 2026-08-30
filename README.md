@@ -392,7 +392,7 @@ Current project status:
 ```text
 22 automated tests
 All tests passing
-96% measured test coverage
+Coverage is measured with Coverage.py and can be generated locally with the commands below.
 ```
 
 Generate a coverage report:

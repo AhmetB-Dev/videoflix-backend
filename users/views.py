@@ -80,7 +80,11 @@ class LogoutView(APIView):
             return Response(MISSING_REFRESH_TOKEN, status=status.HTTP_400_BAD_REQUEST)
         if not try_blacklist_refresh_token(token):
             return Response(INVALID_REFRESH_TOKEN, status=status.HTTP_400_BAD_REQUEST)
-        response = Response({"detail": "Logout successful!"})
+        response = Response(
+            {
+                "detail": "Logout successful! All tokens will be deleted. Refresh token is now invalid."
+            }
+        )
         delete_auth_cookies(response)
         return response
 
