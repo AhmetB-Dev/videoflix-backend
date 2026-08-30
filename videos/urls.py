@@ -6,7 +6,6 @@ from .views import (
     VideoListView,
 )
 
-
 urlpatterns = [
     path(
         "video/",

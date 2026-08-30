@@ -1,3 +1,5 @@
+"""API views for registration, activation, login, logout, and password recovery."""
+
 from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -37,6 +39,7 @@ ACTIVATION_FAILED = {"detail": "Activation failed."}
 
 
 class PasswordConfirmView(APIView):
+    """Validate a password-reset token and store the user's new password."""
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token):
@@ -56,6 +59,11 @@ class PasswordConfirmView(APIView):
 
 
 class PasswordResetView(APIView):
+    """Start password recovery without revealing whether an account exists.
+
+    For active accounts, a reset token is generated and sent by email. The API
+    returns the same success response for unknown addresses to reduce account
+    enumeration risk."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -72,6 +80,7 @@ class PasswordResetView(APIView):
 
 
 class LogoutView(APIView):
+    """Invalidate the refresh token and remove authentication cookies."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -90,6 +99,7 @@ class LogoutView(APIView):
 
 
 class RefreshTokenView(APIView):
+    """Create a new access token from the refresh token stored in a cookie."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -105,6 +115,7 @@ class RefreshTokenView(APIView):
 
 
 class LoginView(APIView):
+    """Authenticate an active user and issue access and refresh cookies."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -124,6 +135,7 @@ class LoginView(APIView):
 
     @staticmethod
     def _create_response(user):
+        """Build the successful login response before authentication cookies are set."""
         data = {
             "detail": "Login successful",
             "user": {
@@ -135,6 +147,7 @@ class LoginView(APIView):
 
 
 class ActivateAccountView(APIView):
+    """Activate an inactive account when its email token is valid."""
     permission_classes = [AllowAny]
 
     def get(self, request, uidb64, token):
@@ -152,6 +165,7 @@ class ActivateAccountView(APIView):
 
 
 class RegisterView(APIView):
+    """Create an inactive user account and send its activation email."""
     permission_classes = [AllowAny]
 
     def post(self, request):

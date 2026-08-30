@@ -1,3 +1,5 @@
+"""Helpers for video caching and safe access to HLS manifests and segments."""
+
 from pathlib import Path
 
 from django.conf import settings
@@ -13,6 +15,7 @@ VIDEO_LIST_CACHE_TIMEOUT = 300
 
 
 def get_manifest_content(movie_id, resolution):
+    """Return the requested HLS manifest content when the generated file exists."""
     get_ready_video(movie_id)
     manifest_path = get_manifest_path(movie_id, resolution)
 
@@ -23,6 +26,7 @@ def get_manifest_content(movie_id, resolution):
 
 
 def get_existing_segment_path(movie_id, resolution, segment):
+    """Return a validated HLS segment path when the generated file exists."""
     get_ready_video(movie_id)
     segment_path = get_segment_path(movie_id, resolution, segment)
 
@@ -33,10 +37,12 @@ def get_existing_segment_path(movie_id, resolution, segment):
 
 
 def get_cached_video_list():
+    """Read the serialized dashboard video list from Redis-backed cache."""
     return cache.get(VIDEO_LIST_CACHE_KEY)
 
 
 def cache_video_list(data):
+    """Cache the serialized dashboard video list for a short period."""
     cache.set(
         VIDEO_LIST_CACHE_KEY,
         data,
@@ -45,10 +51,12 @@ def cache_video_list(data):
 
 
 def clear_video_list_cache():
+    """Invalidate the cached dashboard video list."""
     cache.delete(VIDEO_LIST_CACHE_KEY)
 
 
 def get_ready_video(movie_id):
+    """Return a ready video or raise a 404 response when it is unavailable."""
     return get_object_or_404(
         Video,
         pk=movie_id,
@@ -57,6 +65,7 @@ def get_ready_video(movie_id):
 
 
 def get_hls_directory(movie_id, resolution):
+    """Return the generated HLS directory for an allowed resolution."""
     if resolution not in ALLOWED_RESOLUTIONS:
         return None
 
@@ -64,6 +73,7 @@ def get_hls_directory(movie_id, resolution):
 
 
 def get_manifest_path(movie_id, resolution):
+    """Return the expected index.m3u8 path for a video and resolution."""
     directory = get_hls_directory(movie_id, resolution)
 
     if directory is None:
@@ -73,6 +83,7 @@ def get_manifest_path(movie_id, resolution):
 
 
 def get_segment_path(movie_id, resolution, segment):
+    """Return a safe HLS segment path after validating the segment name."""
     if not is_valid_segment(segment):
         return None
 
@@ -85,4 +96,5 @@ def get_segment_path(movie_id, resolution, segment):
 
 
 def is_valid_segment(segment):
+    """Allow only plain .ts filenames without directory traversal components."""
     return Path(segment).name == segment and segment.endswith(".ts")

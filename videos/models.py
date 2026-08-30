@@ -1,8 +1,12 @@
+"""Database models for uploaded videos and their processing state."""
+
 from django.db import models
 
 
 class Video(models.Model):
+    """Store source video metadata, generated thumbnail, and processing status."""
     class ProcessingStatus(models.TextChoices):
+        """Represent the lifecycle of asynchronous video processing."""
         PENDING = "pending", "Pending"
         PROCESSING = "processing", "Processing"
         READY = "ready", "Ready"

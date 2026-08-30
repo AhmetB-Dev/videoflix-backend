@@ -1,3 +1,5 @@
+"""Django admin configuration for managing Videoflix videos."""
+
 from django.contrib import admin
 
 from .models import Video
@@ -5,6 +7,7 @@ from .models import Video
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
+    """Expose useful video status, category, and search fields in Django admin."""
     list_display = (
         "title",
         "category",

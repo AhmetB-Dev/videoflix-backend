@@ -1,3 +1,5 @@
+"""Background video-processing tasks that create thumbnails and HLS variants."""
+
 import subprocess
 from pathlib import Path
 
@@ -36,6 +38,7 @@ HLS_OPTIONS = [
 
 
 def process_video(video_id):
+    """Generate the thumbnail and HLS renditions while tracking processing status."""
     video = Video.objects.get(pk=video_id)
     _set_status(video, Video.ProcessingStatus.PROCESSING)
 
@@ -49,11 +52,13 @@ def process_video(video_id):
 
 
 def _create_hls_versions(video):
+    """Generate every configured HLS resolution for a source video."""
     for resolution, height in RESOLUTIONS.items():
         _create_hls_version(video, resolution, height)
 
 
 def _create_hls_version(video, resolution, height):
+    """Create one HLS rendition in its dedicated output directory."""
     output_dir = _output_dir(video, resolution)
     output_dir.mkdir(parents=True, exist_ok=True)
     command = _hls_command(video, output_dir, height)
@@ -61,6 +66,7 @@ def _create_hls_version(video, resolution, height):
 
 
 def _hls_command(video, output_dir, height):
+    """Build the FFmpeg command used to create an HLS rendition."""
     return [
         *FFMPEG_BASE_OPTIONS,
         "-i",
@@ -76,6 +82,7 @@ def _hls_command(video, output_dir, height):
 
 
 def _create_thumbnail(video):
+    """Generate and persist a thumbnail image for the source video."""
     thumbnail_path = _thumbnail_path(video)
     thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(_thumbnail_command(video, thumbnail_path), check=True)
@@ -84,6 +91,7 @@ def _create_thumbnail(video):
 
 
 def _thumbnail_command(video, output_path):
+    """Build the FFmpeg command used to capture the thumbnail frame."""
     return [
         "ffmpeg",
         "-y",
@@ -98,17 +106,21 @@ def _thumbnail_command(video, output_path):
 
 
 def _output_dir(video, resolution):
+    """Return the media directory for one generated HLS resolution."""
     return Path(settings.MEDIA_ROOT) / "videos" / str(video.pk) / resolution
 
 
 def _thumbnail_path(video):
+    """Return the generated thumbnail path for a video."""
     return Path(settings.MEDIA_ROOT) / "videos" / "thumbnails" / f"{video.pk}.jpg"
 
 
 def _relative_media_path(path):
+    """Convert an absolute media path into the value stored by Django."""
     return str(path.relative_to(settings.MEDIA_ROOT))
 
 
 def _set_status(video, new_status):
+    """Persist a new video-processing status."""
     video.processing_status = new_status
     video.save(update_fields=["processing_status"])

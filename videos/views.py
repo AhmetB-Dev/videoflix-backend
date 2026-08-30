@@ -1,3 +1,5 @@
+"""Authenticated API views for the video dashboard and HLS delivery."""
+
 from django.http import FileResponse, HttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -15,6 +17,10 @@ from .utils import (
 
 
 class VideoListView(ListAPIView):
+    """Return ready videos and cache the serialized dashboard response.
+
+    Only authenticated users can access the list. Cached data is invalidated by
+    model signals whenever videos are saved or deleted."""
     serializer_class = VideoSerializer
     permission_classes = [IsAuthenticated]
     queryset = Video.objects.filter(processing_status=Video.ProcessingStatus.READY)
@@ -30,6 +36,7 @@ class VideoListView(ListAPIView):
 
 
 class HLSManifestView(APIView):
+    """Serve an authenticated HLS playlist for a ready video and resolution."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution):
@@ -45,6 +52,10 @@ class HLSManifestView(APIView):
 
 
 class HLSSegmentView(APIView):
+    """Serve authenticated HLS transport-stream segments from validated paths.
+
+    Segment names and resolutions are checked before filesystem access to avoid
+    serving arbitrary files outside the generated HLS directories."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution, segment):

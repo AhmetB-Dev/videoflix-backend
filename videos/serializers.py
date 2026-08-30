@@ -1,9 +1,12 @@
+"""DRF serializers for exposing processed video metadata through the API."""
+
 from rest_framework import serializers
 
 from .models import Video
 
 
 class VideoSerializer(serializers.ModelSerializer):
+    """Serialize ready video metadata for the authenticated dashboard."""
     thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -18,6 +21,7 @@ class VideoSerializer(serializers.ModelSerializer):
         )
 
     def get_thumbnail_url(self, video):
+        """Return an absolute thumbnail URL or None when no thumbnail exists."""
         if not video.thumbnail:
             return None
 
