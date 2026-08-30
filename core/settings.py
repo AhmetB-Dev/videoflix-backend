@@ -206,11 +206,50 @@ STORAGES = {
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+SMTP_USE_SSL = (
+    os.getenv(
+        "SMTP_USE_SSL",
+        "True",
+    ).lower()
+    == "true"
+)
+
+SMTP_USE_TLS = (
+    os.getenv(
+        "SMTP_USE_TLS",
+        "False",
+    ).lower()
+    == "true"
+)
+
 MAILERS = {
     "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": os.getenv("EMAIL_HOST"),
+            "port": int(os.getenv("EMAIL_PORT", "587")),
+            "username": os.getenv("EMAIL_HOST_USER"),
+            "password": os.getenv("EMAIL_HOST_PASSWORD"),
+            "use_tls": os.getenv(
+                "EMAIL_USE_TLS",
+                "True",
+            ).lower()
+            == "true",
+            "use_ssl": os.getenv(
+                "EMAIL_USE_SSL",
+                "False",
+            ).lower()
+            == "true",
+        },
     },
 }
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "Videoflix <contact@ahmet-balci.de>",
+)
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("users.authentication.CookieJWTAuthentication",),
 }
