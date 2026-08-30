@@ -7,6 +7,29 @@ from rest_framework import serializers
 GENERIC_ERROR = "Please check your input and try again."
 
 
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordConfirmSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(GENERIC_ERROR)
+
+        self._validate_password(attrs["new_password"])
+        return attrs
+
+    @staticmethod
+    def _validate_password(password):
+        try:
+            validate_password(password)
+        except ValidationError:
+            raise serializers.ValidationError(GENERIC_ERROR)
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)

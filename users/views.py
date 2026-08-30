@@ -11,7 +11,12 @@ from rest_framework.views import APIView
 
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .serializers import LoginSerializer, RegistrationSerializer
+from .serializers import (
+    LoginSerializer,
+    PasswordConfirmSerializer,
+    PasswordResetSerializer,
+    RegistrationSerializer,
+)
 from .utils import (
     create_access_token,
     create_activation_credentials,
@@ -21,7 +26,78 @@ from .utils import (
     set_auth_cookies,
     blacklist_refresh_token,
     delete_auth_cookies,
+    create_password_reset_credentials,
+    send_password_reset_email,
 )
+
+
+class PasswordConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, uidb64, token):
+        user = self._get_user(uidb64)
+
+        if not self._token_is_valid(user, token):
+            return self._invalid_token_response()
+
+        serializer = PasswordConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+
+        return Response(
+            {"detail": "Your Password has been successfully reset."},
+            status=status.HTTP_200_OK,
+        )
+
+    @staticmethod
+    def _get_user(uidb64):
+        user_model = get_user_model()
+
+        try:
+            user_id = force_str(urlsafe_base64_decode(uidb64))
+            return user_model.objects.get(pk=user_id)
+        except (ValueError, TypeError, OverflowError, user_model.DoesNotExist):
+            return None
+
+    @staticmethod
+    def _token_is_valid(user, token):
+        return user and default_token_generator.check_token(user, token)
+
+    @staticmethod
+    def _invalid_token_response():
+        return Response(
+            {"detail": "Invalid or expired password reset link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class PasswordResetView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = self._get_user(serializer.validated_data["email"])
+
+        if user:
+            uid, token = create_password_reset_credentials(user)
+            send_password_reset_email(user, uid, token)
+
+        return Response(
+            {"detail": "An email has been sent to reset your password."},
+            status=status.HTTP_200_OK,
+        )
+
+    @staticmethod
+    def _get_user(email):
+        user_model = get_user_model()
+        return user_model.objects.filter(
+            email__iexact=email,
+            is_active=True,
+        ).first()
 
 
 class LogoutView(APIView):
