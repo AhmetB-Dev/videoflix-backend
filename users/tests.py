@@ -27,67 +27,76 @@ class AuthTests(APITestCase):
             is_active=is_active,
         )
 
-    def test_registration_creates_inactive_user(self):
-        data = {
+    def login_data(self):
+        return {
             "email": self.email,
             "password": self.password,
+        }
+
+    def registration_data(self):
+        return {
+            **self.login_data(),
             "confirmed_password": self.password,
         }
-        response = self.client.post("/api/register/", data, format="json")
-        user = User.objects.get(email=self.email)
 
+    def token_credentials(self, user):
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        return uid, token
+
+    def login(self):
+        return self.client.post(
+            "/api/login/",
+            self.login_data(),
+            format="json",
+        )
+
+    def test_registration_creates_inactive_user(self):
+        response = self.client.post(
+            "/api/register/",
+            self.registration_data(),
+            format="json",
+        )
+        user = User.objects.get(email=self.email)
         self.assertEqual(response.status_code, 201)
         self.assertFalse(user.is_active)
 
     def test_registration_sends_activation_email(self):
-        data = {
-            "email": self.email,
-            "password": self.password,
-            "confirmed_password": self.password,
-        }
-        self.client.post("/api/register/", data, format="json")
-
+        self.client.post(
+            "/api/register/",
+            self.registration_data(),
+            format="json",
+        )
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.email])
 
     def test_activation_activates_user(self):
         user = self.create_user(is_active=False)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-
+        uid, token = self.token_credentials(user)
         response = self.client.get(f"/api/activate/{uid}/{token}/")
         user.refresh_from_db()
-
         self.assertEqual(response.status_code, 200)
         self.assertTrue(user.is_active)
 
     def test_active_user_can_login(self):
         self.create_user()
-        data = {"email": self.email, "password": self.password}
-
-        response = self.client.post("/api/login/", data, format="json")
-
+        response = self.login()
         self.assertEqual(response.status_code, 200)
         self.assertIn("access_token", response.cookies)
         self.assertIn("refresh_token", response.cookies)
 
     def test_inactive_user_cannot_login(self):
         self.create_user(is_active=False)
-        data = {"email": self.email, "password": self.password}
-
-        response = self.client.post("/api/login/", data, format="json")
-
+        response = self.login()
         self.assertEqual(response.status_code, 401)
 
     def test_password_reset_sends_email(self):
         self.create_user()
-
         response = self.client.post(
             "/api/password_reset/",
             {"email": self.email},
             format="json",
         )
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.email])
@@ -98,61 +107,41 @@ class AuthTests(APITestCase):
             {"email": "unknown@example.com"},
             format="json",
         )
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 0)
 
     def test_password_confirm_changes_password(self):
         user = self.create_user()
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        data = {
-            "new_password": "NewStrongPassword123!",
-            "confirm_password": "NewStrongPassword123!",
-        }
-
+        uid, token = self.token_credentials(user)
+        new_password = "NewStrongPassword123!"
+        data = self.password_confirm_data(new_password)
         response = self.client.post(
             f"/api/password_confirm/{uid}/{token}/",
             data,
             format="json",
         )
-
         user.refresh_from_db()
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(user.check_password(data["new_password"]))
+        self.assertTrue(user.check_password(new_password))
+
+    @staticmethod
+    def password_confirm_data(password):
+        return {
+            "new_password": password,
+            "confirm_password": password,
+        }
 
     def test_refresh_token_creates_new_access_cookie(self):
         self.create_user()
-        self.client.post(
-            "/api/login/",
-            {"email": self.email, "password": self.password},
-            format="json",
-        )
-
+        self.login()
         response = self.client.post("/api/token/refresh/")
-
         self.assertEqual(response.status_code, 200)
         self.assertIn("access_token", response.cookies)
 
     def test_logout_invalidates_refresh_token(self):
         self.create_user()
-        self.client.post(
-            "/api/login/",
-            {
-                "email": self.email,
-                "password": self.password,
-            },
-            format="json",
-        )
-
+        self.login()
         response = self.client.post("/api/logout/")
-
         self.assertEqual(response.status_code, 200)
-
-        refresh_response = self.client.post(
-            "/api/token/refresh/",
-        )
-        self.assertEqual(
-            refresh_response.status_code,
-            401,
-        )
+        refresh_response = self.client.post("/api/token/refresh/")
+        self.assertEqual(refresh_response.status_code, 401)

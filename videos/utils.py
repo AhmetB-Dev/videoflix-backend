@@ -1,13 +1,36 @@
 from pathlib import Path
-from django.core.cache import cache
 
 from django.conf import settings
+from django.core.cache import cache
+from django.shortcuts import get_object_or_404
+
+from .models import Video
 
 
 ALLOWED_RESOLUTIONS = {"480p", "720p", "1080p"}
 
 VIDEO_LIST_CACHE_KEY = "video_list"
 VIDEO_LIST_CACHE_TIMEOUT = 300
+
+
+def get_manifest_content(movie_id, resolution):
+    get_ready_video(movie_id)
+    manifest_path = get_manifest_path(movie_id, resolution)
+
+    if not manifest_path or not manifest_path.exists():
+        return None
+
+    return manifest_path.read_text(encoding="utf-8")
+
+
+def get_existing_segment_path(movie_id, resolution, segment):
+    get_ready_video(movie_id)
+    segment_path = get_segment_path(movie_id, resolution, segment)
+
+    if not segment_path or not segment_path.exists():
+        return None
+
+    return segment_path
 
 
 def get_cached_video_list():
@@ -24,6 +47,14 @@ def cache_video_list(data):
 
 def clear_video_list_cache():
     cache.delete(VIDEO_LIST_CACHE_KEY)
+
+
+def get_ready_video(movie_id):
+    return get_object_or_404(
+        Video,
+        pk=movie_id,
+        processing_status=Video.ProcessingStatus.READY,
+    )
 
 
 def get_hls_directory(movie_id, resolution):

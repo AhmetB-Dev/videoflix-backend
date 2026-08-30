@@ -12,6 +12,29 @@ RESOLUTIONS = {
     "1080p": 1080,
 }
 
+FFMPEG_BASE_OPTIONS = [
+    "ffmpeg",
+    "-y",
+]
+
+HLS_CODEC_OPTIONS = [
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+]
+
+HLS_OPTIONS = [
+    "-hls_time",
+    "10",
+    "-hls_playlist_type",
+    "vod",
+]
+
 
 def process_video(video_id):
     video = Video.objects.get(pk=video_id)
@@ -40,24 +63,13 @@ def _create_hls_version(video, resolution, height):
 
 def _hls_command(video, output_dir, height):
     return [
-        "ffmpeg",
-        "-y",
+        *FFMPEG_BASE_OPTIONS,
         "-i",
         video.original_file.path,
         "-vf",
         f"scale=-2:{height}",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-hls_time",
-        "10",
-        "-hls_playlist_type",
-        "vod",
+        *HLS_CODEC_OPTIONS,
+        *HLS_OPTIONS,
         "-hls_segment_filename",
         str(output_dir / "%03d.ts"),
         str(output_dir / "index.m3u8"),
