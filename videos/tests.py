@@ -88,6 +88,65 @@ class VideoListTests(APITestCase):
         self.assertIsNone(cache.get("video_list"))
 
 
+class VideoThumbnailTests(APITestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.media_root = Path(self.temp_dir.name)
+        self.settings_override = override_settings(MEDIA_ROOT=self.media_root)
+        self.settings_override.enable()
+        self.user = self.create_user()
+        self.video = self.create_video()
+        self.create_thumbnail()
+
+    def tearDown(self):
+        self.settings_override.disable()
+        self.temp_dir.cleanup()
+
+    @staticmethod
+    def create_user():
+        return User.objects.create_user(
+            username="thumbnail@test.com",
+            email="thumbnail@test.com",
+            password="StrongPassword123!",
+        )
+
+    @staticmethod
+    def create_video():
+        return Video.objects.create(
+            title="Thumbnail Test",
+            category="Drama",
+            thumbnail="videos/thumbnails/test.jpg",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+
+    def create_thumbnail(self):
+        thumbnail = self.media_root / self.video.thumbnail.name
+        thumbnail.parent.mkdir(parents=True)
+        thumbnail.write_bytes(b"fake-jpeg")
+
+    def authenticate(self):
+        self.client.force_authenticate(user=self.user)
+
+    def thumbnail_url(self, video_id=None):
+        movie_id = video_id or self.video.id
+        return f"/api/video/{movie_id}/thumbnail/"
+
+    def test_thumbnail_requires_authentication(self):
+        response = self.client.get(self.thumbnail_url())
+        self.assertEqual(response.status_code, 401)
+
+    def test_authenticated_user_gets_thumbnail(self):
+        self.authenticate()
+        response = self.client.get(self.thumbnail_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/jpeg")
+
+    def test_unknown_thumbnail_returns_404(self):
+        self.authenticate()
+        response = self.client.get(self.thumbnail_url(video_id=999999))
+        self.assertEqual(response.status_code, 404)
+
+
 class HLSStreamingTests(APITestCase):
     def setUp(self):
         self.create_temp_media()

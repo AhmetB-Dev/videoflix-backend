@@ -36,6 +36,15 @@ def get_existing_segment_path(movie_id, resolution, segment):
     return segment_path
 
 
+def get_thumbnail_path(movie_id):
+    """Return a ready video's generated thumbnail path when it exists."""
+    video = get_ready_video(movie_id)
+    if not video.thumbnail:
+        return None
+    thumbnail_path = Path(video.thumbnail.path)
+    return thumbnail_path if thumbnail_path.exists() else None
+
+
 def get_cached_video_list():
     """Read the serialized dashboard video list from Redis-backed cache."""
     return cache.get(VIDEO_LIST_CACHE_KEY)

@@ -13,6 +13,7 @@ from .utils import (
     get_cached_video_list,
     get_existing_segment_path,
     get_manifest_content,
+    get_thumbnail_path,
 )
 
 
@@ -33,6 +34,20 @@ class VideoListView(ListAPIView):
         response = super().list(request, *args, **kwargs)
         cache_video_list(response.data)
         return response
+
+
+class VideoThumbnailView(APIView):
+    """Serve a generated thumbnail only to authenticated users."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, movie_id):
+        thumbnail_path = get_thumbnail_path(movie_id)
+        if thumbnail_path is None:
+            return HttpResponse(status=404)
+        return FileResponse(
+            thumbnail_path.open("rb"),
+            content_type="image/jpeg",
+        )
 
 
 class HLSManifestView(APIView):

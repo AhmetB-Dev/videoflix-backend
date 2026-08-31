@@ -40,6 +40,7 @@ ACTIVATION_FAILED = {"detail": "Activation failed."}
 
 class PasswordConfirmView(APIView):
     """Validate a password-reset token and store the user's new password."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token):
@@ -64,6 +65,7 @@ class PasswordResetView(APIView):
     For active accounts, a reset token is generated and sent by email. The API
     returns the same success response for unknown addresses to reduce account
     enumeration risk."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -81,6 +83,7 @@ class PasswordResetView(APIView):
 
 class LogoutView(APIView):
     """Invalidate the refresh token and remove authentication cookies."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -100,6 +103,7 @@ class LogoutView(APIView):
 
 class RefreshTokenView(APIView):
     """Create a new access token from the refresh token stored in a cookie."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -116,6 +120,7 @@ class RefreshTokenView(APIView):
 
 class LoginView(APIView):
     """Authenticate an active user and issue access and refresh cookies."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -148,6 +153,7 @@ class LoginView(APIView):
 
 class ActivateAccountView(APIView):
     """Activate an inactive account when its email token is valid."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request, uidb64, token):
@@ -166,6 +172,7 @@ class ActivateAccountView(APIView):
 
 class RegisterView(APIView):
     """Create an inactive user account and send its activation email."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):

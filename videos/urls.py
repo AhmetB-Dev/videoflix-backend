@@ -4,6 +4,7 @@ from .views import (
     HLSManifestView,
     HLSSegmentView,
     VideoListView,
+    VideoThumbnailView,
 )
 
 urlpatterns = [
@@ -11,6 +12,11 @@ urlpatterns = [
         "video/",
         VideoListView.as_view(),
         name="video-list",
+    ),
+    path(
+        "video/<int:movie_id>/thumbnail/",
+        VideoThumbnailView.as_view(),
+        name="video-thumbnail",
     ),
     path(
         "video/<int:movie_id>/<str:resolution>/index.m3u8",

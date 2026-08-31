@@ -143,4 +143,4 @@ class AuthTests(APITestCase):
         response = self.client.post("/api/logout/")
         self.assertEqual(response.status_code, 200)
         refresh_response = self.client.post("/api/token/refresh/")
-        self.assertEqual(refresh_response.status_code, 401)
+        self.assertEqual(refresh_response.status_code, 400)

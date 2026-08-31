@@ -42,6 +42,7 @@ DEBUG=True
 
 ALLOWED_HOSTS=localhost,127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://localhost:5500,http://127.0.0.1:5500
+CORS_ALLOWED_ORIGINS=http://localhost:5500,http://127.0.0.1:5500
 FRONTEND_URL=http://127.0.0.1:5500
 
 DB_NAME=your_database_name
@@ -138,6 +139,7 @@ docker compose exec web python manage.py test
 Authenticated users can access:
 
 - the video catalogue
+- generated thumbnails
 - HLS manifests
 - HLS video segments
 
@@ -305,6 +307,7 @@ When a video is created, changed, or deleted, the cached catalogue is invalidate
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/api/video/` | Retrieve all ready videos |
+| `GET` | `/api/video/<movie_id>/thumbnail/` | Retrieve an authenticated thumbnail |
 | `GET` | `/api/video/<movie_id>/<resolution>/index.m3u8` | Retrieve an HLS manifest |
 | `GET` | `/api/video/<movie_id>/<resolution>/<segment>/` | Retrieve an HLS segment |
 
@@ -390,7 +393,7 @@ docker compose exec web python manage.py test
 Current project status:
 
 ```text
-22 automated tests
+25 automated tests
 All tests passing
 Coverage is measured with Coverage.py and can be generated locally with the commands below.
 ```
@@ -414,6 +417,7 @@ The automated test suite covers areas including:
 - password-reset emails
 - password confirmation
 - authenticated and unauthenticated video access
+- authenticated thumbnail delivery
 - ready-video filtering
 - newest-first video ordering
 - Redis caching
@@ -505,11 +509,15 @@ The backend includes several security measures:
 - HttpOnly authentication cookies
 - configurable Secure and SameSite cookie settings
 - refresh-token blacklisting
-- protected video and HLS endpoints
+- global authenticated-by-default DRF permissions
+- explicitly public authentication/account endpoints
+- protected video, thumbnail, and HLS endpoints
 - generic responses for sensitive account flows
 - server-side validation of HLS segment paths
 - environment variables for secrets and credentials
-- CORS restrictions
+- environment-driven CORS restrictions
+- secure session and CSRF cookies when `DEBUG=False`
+- reverse-proxy HTTPS awareness
 - CSRF trusted-origin configuration
 - inactive accounts until email verification
 
@@ -528,6 +536,24 @@ Production deployments should use HTTPS, `DEBUG=False`, production-specific allo
 - The provided frontend is used to demonstrate and interact with this backend implementation.
 
 ---
+
+## Production Deployment
+
+Production-specific configuration is documented in
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+The repository also contains `.env.production.example` with non-secret example
+values for an `ahmet-balci.de` / `api.ahmet-balci.de` deployment.
+
+Important production principles:
+
+- keep `DEBUG=False`
+- keep the real `.env` outside version control
+- use HTTPS through a reverse proxy
+- do not expose PostgreSQL, Redis, or port `8000` publicly
+- do not expose the complete `/media/` directory directly
+- run `python manage.py check --deploy` before going live
+
 
 ## Frontend Repository
 

@@ -1,5 +1,6 @@
 """DRF serializers for exposing processed video metadata through the API."""
 
+from django.urls import reverse
 from rest_framework import serializers
 
 from .models import Video
@@ -21,9 +22,13 @@ class VideoSerializer(serializers.ModelSerializer):
         )
 
     def get_thumbnail_url(self, video):
-        """Return an absolute thumbnail URL or None when no thumbnail exists."""
+        """Return the authenticated API URL for a generated thumbnail."""
         if not video.thumbnail:
             return None
 
+        thumbnail_url = reverse(
+            "video-thumbnail",
+            kwargs={"movie_id": video.pk},
+        )
         request = self.context.get("request")
-        return request.build_absolute_uri(video.thumbnail.url)
+        return request.build_absolute_uri(thumbnail_url)

@@ -19,6 +19,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _get_env_list(name, default):
+    """Return a comma-separated environment variable as a clean list."""
+    return [
+        value.strip()
+        for value in os.environ.get(name, default).split(",")
+        if value.strip()
+    ]
+
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -37,15 +46,32 @@ JWT_REFRESH_COOKIE = "refresh_token"
 JWT_COOKIE_SECURE = not DEBUG
 JWT_COOKIE_SAMESITE = "Lax"
 
-ALLOWED_HOSTS = os.environ.get(
+ALLOWED_HOSTS = _get_env_list(
     "ALLOWED_HOSTS",
-    default="localhost",
-).split(",")
+    "localhost,127.0.0.1",
+)
 
-CSRF_TRUSTED_ORIGINS = os.environ.get(
+CSRF_TRUSTED_ORIGINS = _get_env_list(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:5500",
-).split(",")
+    "http://localhost:5500,http://127.0.0.1:5500",
+)
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.getenv(
+    "SECURE_SSL_REDIRECT",
+    "False",
+).lower() == "true"
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv(
+    "SECURE_HSTS_INCLUDE_SUBDOMAINS",
+    "False",
+).lower() == "true"
+SECURE_HSTS_PRELOAD = os.getenv(
+    "SECURE_HSTS_PRELOAD",
+    "False",
+).lower() == "true"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -60,10 +86,10 @@ FRONTEND_URL = os.getenv(
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-]
+CORS_ALLOWED_ORIGINS = _get_env_list(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5500,http://127.0.0.1:5500",
+)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -236,5 +262,10 @@ DEFAULT_FROM_EMAIL = os.getenv(
 )
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("users.authentication.CookieJWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "users.authentication.CookieJWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
 }
