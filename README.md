@@ -4,8 +4,33 @@ Videoflix is a Django REST Framework backend for a video streaming application.
 
 I implemented the backend architecture and application logic, including authentication, email activation and password recovery, PostgreSQL persistence, Redis caching, asynchronous background processing with Django RQ, FFmpeg-based video transcoding, thumbnail generation, and authenticated HLS streaming in multiple resolutions.
 
-> **Frontend:** The frontend used as the client interface was provided by Developer Akademie and is maintained separately:
-> [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
+## Project Links
+
+- **Live Demo:** https://ahmet-balci.de/projects/videoflix/
+- **Backend:** This repository
+- **Frontend source:** [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
+
+> **Frontend notice:**  
+> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.  
+> My implementation focuses on the complete backend, API, authentication, video processing, caching, streaming, testing, and deployment.
+
+---
+
+## Highlights
+
+- Django REST Framework backend
+- PostgreSQL database
+- JWT authentication with HttpOnly cookies
+- Email activation and password recovery
+- Redis caching
+- Asynchronous background jobs with Django RQ
+- FFmpeg video transcoding
+- HLS streaming in 480p, 720p, and 1080p
+- Automated thumbnail generation
+- Docker / Docker Compose
+- Gunicorn production server
+- HTTPS-ready production deployment
+- Automated backend test suite
 
 ---
 
@@ -42,13 +67,13 @@ Never commit the real `.env` file or production credentials.
 docker compose up --build
 ```
 
-The backend API is available at:
+The backend API is available locally at:
 
 ```text
 http://127.0.0.1:8000/api/
 ```
 
-The Django administration interface is available at:
+The Django administration interface is available locally at:
 
 ```text
 http://127.0.0.1:8000/admin/
@@ -463,11 +488,9 @@ Production deployments should use HTTPS, `DEBUG=False`, production-specific allo
 
 ## Production Deployment
 
-Production-specific configuration is documented in
-[`DEPLOYMENT.md`](DEPLOYMENT.md).
+Production-specific configuration is documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-The repository also contains `.env.production.example` with non-secret example
-values for an `ahmet-balci.de` / `api.ahmet-balci.de` deployment.
+The repository also contains `.env.production.example` with non-secret example values for an `ahmet-balci.de` / `api.ahmet-balci.de` deployment.
 
 Important production principles:
 
@@ -478,9 +501,37 @@ Important production principles:
 - do not expose the complete `/media/` directory directly
 - run `python manage.py check --deploy` before going live
 
+---
+
+## Deployment Experience
+
+This project was not only developed locally but also prepared for and deployed in a production-oriented environment.
+
+The deployment setup includes:
+
+- Docker and Docker Compose
+- Gunicorn
+- PostgreSQL
+- Redis
+- HTTPS / reverse-proxy setup
+- environment-based production configuration
+- secure handling of application secrets
+- production deployment checks
+
+This provided practical experience with backend deployment and DevOps-related workflows in addition to application development.
+
+---
 
 ## Frontend Repository
 
 The client interface used with this backend is available here:
 
 [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
+
+---
+
+## Live Demo
+
+The deployed project is available here:
+
+**https://ahmet-balci.de/projects/videoflix/**
