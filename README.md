@@ -32,38 +32,7 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-Configure the required values in `.env`.
-
-Example:
-
-```env
-SECRET_KEY=your_django_secret_key
-DEBUG=True
-
-ALLOWED_HOSTS=localhost,127.0.0.1
-CSRF_TRUSTED_ORIGINS=http://localhost:5500,http://127.0.0.1:5500
-CORS_ALLOWED_ORIGINS=http://localhost:5500,http://127.0.0.1:5500
-FRONTEND_URL=http://127.0.0.1:5500
-
-DB_NAME=your_database_name
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-DB_HOST=db
-DB_PORT=5432
-
-REDIS_HOST=redis
-REDIS_LOCATION=redis://redis:6379/1
-REDIS_PORT=6379
-REDIS_DB=0
-
-EMAIL_HOST=smtp.example.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your-email@example.com
-EMAIL_HOST_PASSWORD=your-email-password
-EMAIL_USE_TLS=True
-EMAIL_USE_SSL=False
-DEFAULT_FROM_EMAIL='Videoflix <your-email@example.com>'
-```
+Configure the required values in `.env` using `.env.example` as the source of truth for all available environment variables.
 
 Never commit the real `.env` file or production credentials.
 
@@ -431,51 +400,6 @@ The automated test suite covers areas including:
 - processing-status transitions
 
 The video-processing task module currently reaches 100% statement coverage.
-
----
-
-## Project Structure
-
-```text
-videoflix-backend/
-│
-├── core/
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-│
-├── users/
-│   ├── authentication.py
-│   ├── serializers.py
-│   ├── templates/
-│   │   └── emails/
-│   ├── tests.py
-│   ├── urls.py
-│   ├── utils.py
-│   └── views.py
-│
-├── videos/
-│   ├── admin.py
-│   ├── migrations/
-│   ├── models.py
-│   ├── serializers.py
-│   ├── signals.py
-│   ├── tasks.py
-│   ├── tests.py
-│   ├── urls.py
-│   ├── utils.py
-│   └── views.py
-│
-├── .env.example
-├── .gitignore
-├── backend.Dockerfile
-├── backend.entrypoint.sh
-├── docker-compose.yml
-├── manage.py
-├── requirements.txt
-└── README.md
-```
 
 ---
 

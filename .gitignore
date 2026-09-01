@@ -2,6 +2,8 @@
 venv/
 __pycache__/
 *.py[cod]
+db.sqlite3
+*.sqlite3
 .idea/
 .vscode/
 media/
@@ -10,3 +12,4 @@ media/
 htmlcov/
 .env.production
 .env.local
+.gitattributes

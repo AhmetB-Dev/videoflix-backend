@@ -143,7 +143,9 @@ class VideoThumbnailTests(APITestCase):
 
     def test_unknown_thumbnail_returns_404(self):
         self.authenticate()
+
         response = self.client.get(self.thumbnail_url(video_id=999999))
+
         self.assertEqual(response.status_code, 404)
 
 

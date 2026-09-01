@@ -3,11 +3,12 @@
 from django.urls import reverse
 from rest_framework import serializers
 
-from .models import Video
+from ..models import Video
 
 
 class VideoSerializer(serializers.ModelSerializer):
     """Serialize ready video metadata for the authenticated dashboard."""
+
     thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:

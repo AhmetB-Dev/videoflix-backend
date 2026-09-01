@@ -6,15 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Video
-from .serializers import VideoSerializer
-from .utils import (
+from ..models import Video
+from ..utils import (
     cache_video_list,
     get_cached_video_list,
     get_existing_segment_path,
     get_manifest_content,
     get_thumbnail_path,
 )
+from .serializers import VideoSerializer
 
 
 class VideoListView(ListAPIView):
@@ -22,6 +22,7 @@ class VideoListView(ListAPIView):
 
     Only authenticated users can access the list. Cached data is invalidated by
     model signals whenever videos are saved or deleted."""
+
     serializer_class = VideoSerializer
     permission_classes = [IsAuthenticated]
     queryset = Video.objects.filter(processing_status=Video.ProcessingStatus.READY)
@@ -38,6 +39,7 @@ class VideoListView(ListAPIView):
 
 class VideoThumbnailView(APIView):
     """Serve a generated thumbnail only to authenticated users."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id):
@@ -52,6 +54,7 @@ class VideoThumbnailView(APIView):
 
 class HLSManifestView(APIView):
     """Serve an authenticated HLS playlist for a ready video and resolution."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution):
@@ -71,6 +74,7 @@ class HLSSegmentView(APIView):
 
     Segment names and resolutions are checked before filesystem access to avoid
     serving arbitrary files outside the generated HLS directories."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution, segment):

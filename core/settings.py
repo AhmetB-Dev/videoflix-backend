@@ -263,7 +263,7 @@ DEFAULT_FROM_EMAIL = os.getenv(
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "users.authentication.CookieJWTAuthentication",
+        "users.api.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",

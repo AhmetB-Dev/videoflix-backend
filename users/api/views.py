@@ -6,13 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import (
-    LoginSerializer,
-    PasswordConfirmSerializer,
-    PasswordResetSerializer,
-    RegistrationSerializer,
-)
-from .utils import (
+from ..utils import (
     activate_user,
     authenticate_user,
     create_activation_credentials,
@@ -30,6 +24,12 @@ from .utils import (
     try_create_access_token,
     update_user_password,
 )
+from .serializers import (
+    LoginSerializer,
+    PasswordConfirmSerializer,
+    PasswordResetSerializer,
+    RegistrationSerializer,
+)
 
 MISSING_REFRESH_TOKEN = {"detail": "Refresh token is missing."}
 INVALID_REFRESH_TOKEN = {"detail": "Invalid refresh token."}
@@ -40,6 +40,7 @@ ACTIVATION_FAILED = {"detail": "Activation failed."}
 
 class PasswordConfirmView(APIView):
     """Validate a password-reset token and store the user's new password."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -65,6 +66,7 @@ class PasswordResetView(APIView):
     For active accounts, a reset token is generated and sent by email. The API
     returns the same success response for unknown addresses to reduce account
     enumeration risk."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -83,6 +85,7 @@ class PasswordResetView(APIView):
 
 class LogoutView(APIView):
     """Invalidate the refresh token and remove authentication cookies."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -103,6 +106,7 @@ class LogoutView(APIView):
 
 class RefreshTokenView(APIView):
     """Create a new access token from the refresh token stored in a cookie."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -120,6 +124,7 @@ class RefreshTokenView(APIView):
 
 class LoginView(APIView):
     """Authenticate an active user and issue access and refresh cookies."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -153,6 +158,7 @@ class LoginView(APIView):
 
 class ActivateAccountView(APIView):
     """Activate an inactive account when its email token is valid."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -172,6 +178,7 @@ class ActivateAccountView(APIView):
 
 class RegisterView(APIView):
     """Create an inactive user account and send its activation email."""
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
