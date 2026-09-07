@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
@@ -5,6 +7,8 @@ from django.test import override_settings
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase
+
+from .tasks import send_activation_email_task
 
 TEST_MAILERS = {
     "default": {
@@ -60,14 +64,79 @@ class AuthTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertFalse(user.is_active)
 
-    def test_registration_sends_activation_email(self):
-        self.client.post(
-            "/api/register/",
-            self.registration_data(),
-            format="json",
-        )
+    @patch("users.tasks.django_rq.enqueue")
+    def test_registration_enqueues_activation_email_after_commit(self, mock_enqueue):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/register/",
+                self.registration_data(),
+                format="json",
+            )
+
+        user = User.objects.get(email=self.email)
+        self.assertEqual(response.status_code, 201)
+        mock_enqueue.assert_called_once_with(send_activation_email_task, user.pk)
+
+    def test_activation_email_task_sends_email(self):
+        user = self.create_user(is_active=False)
+
+        send_activation_email_task(user.pk)
+
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.email])
+
+    def test_activation_email_task_skips_active_user(self):
+        user = self.create_user(is_active=True)
+
+        send_activation_email_task(user.pk)
+
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("users.tasks.django_rq.enqueue")
+    def test_registration_retry_reuses_matching_inactive_user(self, mock_enqueue):
+        user = self.create_user(is_active=False)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/register/",
+                self.registration_data(),
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(User.objects.filter(email=self.email).count(), 1)
+        mock_enqueue.assert_called_once_with(send_activation_email_task, user.pk)
+
+    @patch("users.tasks.django_rq.enqueue")
+    def test_registration_retry_rejects_wrong_password(self, mock_enqueue):
+        self.create_user(is_active=False)
+        data = self.registration_data()
+        data["password"] = "DifferentStrongPassword123!"
+        data["confirmed_password"] = data["password"]
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/register/",
+                data,
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.filter(email=self.email).count(), 1)
+        mock_enqueue.assert_not_called()
+
+    @patch("users.tasks.django_rq.enqueue", side_effect=ConnectionError("Redis down"))
+    def test_registration_survives_activation_queue_failure(self, mock_enqueue):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/register/",
+                self.registration_data(),
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(User.objects.filter(email=self.email, is_active=False).exists())
+        mock_enqueue.assert_called_once()
 
     def test_registration_does_not_expose_activation_credentials(self):
         response = self.client.post(

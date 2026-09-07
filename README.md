@@ -204,7 +204,7 @@ SMTP credentials and sender configuration are stored through environment variabl
 
 ### CI/CD
 
-Every pull request and push is validated in Docker. The pipeline runs Django system checks, the full test suite, and enforces at least 95% test coverage. Successful pushes to `main` build one production image, publish it to GitHub Container Registry, and deploy that immutable image to the VPS over SSH.
+Every pull request and push is validated before publication. The pipeline runs Ruff, audits pinned Python dependencies with `pip-audit`, executes Django system checks including `check --deploy` with production-like security settings, runs the full test suite, and enforces at least 95% test coverage. Successful pushes to `main` build one production image, publish it to GitHub Container Registry, and deploy that immutable image to the VPS over SSH.
 
 The production Compose stack keeps PostgreSQL and Redis private and binds Gunicorn only to `127.0.0.1:8000`, leaving Nginx as the public HTTPS entry point.
 
@@ -219,6 +219,7 @@ Django REST Framework
    │
    ├── Users
    │   ├── Registration
+   │   ├── Recoverable RQ Activation Email Delivery
    │   ├── Email Activation
    │   ├── Login / Logout
    │   ├── Token Refresh
@@ -408,7 +409,9 @@ The automated test suite covers areas including:
 
 - user registration
 - account activation
-- activation email generation
+- activation email generation and background delivery
+- safe activation-email retry for matching inactive accounts
+- registration behavior when activation-email queueing fails
 - active and inactive login behavior
 - JWT cookie creation
 - token refresh

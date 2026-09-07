@@ -6,17 +6,16 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ..tasks import schedule_activation_email
 from ..utils import (
     activate_user,
     authenticate_user,
-    create_activation_credentials,
     create_jwt_tokens,
     create_password_reset_credentials,
     delete_auth_cookies,
     get_active_user_by_email,
     get_user_from_uid,
     is_valid_user_token,
-    send_activation_email,
     send_password_reset_email,
     set_access_cookie,
     set_auth_cookies,
@@ -189,8 +188,7 @@ class RegisterView(APIView):
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        uid, token = create_activation_credentials(user)
-        send_activation_email(user, uid, token)
+        schedule_activation_email(user)
         return Response(
             {
                 "detail": (

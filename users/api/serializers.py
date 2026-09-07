@@ -59,13 +59,20 @@ class RegistrationSerializer(serializers.Serializer):
         email = attrs["email"].strip().lower()
         attrs["email"] = email
         self._validate_password_match(attrs)
-        self._validate_email(email)
         self._validate_password(attrs["password"], email)
+        self._existing_inactive_user = self._get_retry_user(
+            email,
+            attrs["password"],
+        )
         return attrs
 
     def create(self, validated_data):
         """Create an inactive user after registration data has been validated."""
         validated_data.pop("confirmed_password")
+        existing_user = getattr(self, "_existing_inactive_user", None)
+        if existing_user is not None:
+            return existing_user
+
         email = validated_data["email"]
         return User.objects.create_user(
             username=email,
@@ -81,10 +88,14 @@ class RegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError(GENERIC_ERROR)
 
     @staticmethod
-    def _validate_email(email):
-        """Reject email addresses that are already registered."""
-        if User.objects.filter(email__iexact=email).exists():
+    def _get_retry_user(email, password):
+        """Return a matching inactive account or reject an unsafe duplicate."""
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            return None
+        if user.is_active or not user.check_password(password):
             raise serializers.ValidationError(GENERIC_ERROR)
+        return user
 
     @staticmethod
     def _validate_password(password, email):

@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
 
     environment:
-      SECRET_KEY: ci-only-secret-key-that-is-longer-than-32-bytes
+      SECRET_KEY: ci-only-9f7c2a4e6d8b1f3a5c7e9d2b4f6a8c1e3d5b7f9a2c4e6d8b1f3a5c7e9d2b4f6a
       DEBUG: "True"
       SECURE_SSL_REDIRECT: "False"
 
@@ -69,6 +69,12 @@ services:
       - |
         python -m pip check &&
         python manage.py check &&
+        DEBUG=False \
+        SECURE_SSL_REDIRECT=True \
+        SECURE_HSTS_SECONDS=31536000 \
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True \
+        SECURE_HSTS_PRELOAD=True \
+        python manage.py check --deploy --fail-level WARNING &&
         coverage erase &&
         coverage run --source=users,videos manage.py test &&
         coverage report --fail-under=95

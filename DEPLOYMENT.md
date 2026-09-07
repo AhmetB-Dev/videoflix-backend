@@ -2,7 +2,7 @@
 
 This repository uses a Docker-first CI/CD flow:
 
-1. Pull requests and pushes run Django checks, the complete test suite, and a 95% coverage gate in Docker.
+1. Pull requests and pushes run Ruff, `pip-audit`, Django checks including a production-style `check --deploy`, the complete test suite, and a 95% coverage gate.
 2. A successful push to `main` builds one immutable application image.
 3. The image is published to GitHub Container Registry (GHCR).
 4. GitHub Actions connects to the VPS via SSH and deploys that exact image tag.
@@ -117,7 +117,15 @@ Services:
 
 ## CI locally
 
-The same CI test stack can be run locally:
+CI also runs Ruff and a Python dependency vulnerability audit on GitHub Actions:
+
+```bash
+python -m pip install -r requirements-ci.txt
+ruff check .
+pip-audit --strict -r requirements.txt
+```
+
+The same Docker test and Django deployment-check stack can be run locally:
 
 ```bash
 docker compose -f compose.ci.yaml up --build --abort-on-container-exit --exit-code-from test
