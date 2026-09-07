@@ -56,3 +56,19 @@ services:
       DEFAULT_FROM_EMAIL: ci@example.invalid
 
       COVERAGE_FILE: /tmp/.coverage
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        python -m pip check &&
+        python manage.py check &&
+        coverage erase &&
+        coverage run --source=users,videos manage.py test &&
+        coverage report --fail-under=95
