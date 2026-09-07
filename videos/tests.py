@@ -6,12 +6,14 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from .models import Video
 from .tasks import process_video
+from .utils import get_segment_path
 
 
 class VideoListTests(APITestCase):
@@ -288,3 +290,181 @@ class VideoTaskTests(APITestCase):
             self.video.processing_status,
             Video.ProcessingStatus.FAILED,
         )
+
+
+class VideoSecurityAndLifecycleTests(APITestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.media_root = Path(self.temp_dir.name)
+        self.settings_override = override_settings(MEDIA_ROOT=self.media_root)
+        self.settings_override.enable()
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="lifecycle@test.com",
+            email="lifecycle@test.com",
+            password="StrongPassword123!",
+        )
+
+    def tearDown(self):
+        self.settings_override.disable()
+        self.temp_dir.cleanup()
+
+    def test_cookie_jwt_authenticates_video_list(self):
+        Video.objects.create(
+            title="Cookie auth",
+            description="Test",
+            category="Drama",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+        login_response = self.client.post(
+            "/api/login/",
+            {
+                "email": self.user.email,
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+
+        response = self.client.get("/api/video/")
+
+        self.assertEqual(login_response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+
+    def test_invalid_access_cookie_is_rejected(self):
+        self.client.cookies["access_token"] = "invalid-token"
+
+        response = self.client.get("/api/video/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_video_list_uses_cached_response(self):
+        self.client.force_authenticate(user=self.user)
+        video = Video.objects.create(
+            title="Cached",
+            description="Test",
+            category="Drama",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+
+        first_response = self.client.get("/api/video/")
+        second_response = self.client.get("/api/video/")
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(second_response.data[0]["id"], video.id)
+
+    def test_video_list_builds_thumbnail_url(self):
+        self.client.force_authenticate(user=self.user)
+        video = Video.objects.create(
+            title="Thumbnail URL",
+            description="Test",
+            category="Drama",
+            thumbnail="videos/thumbnails/example.jpg",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+
+        response = self.client.get("/api/video/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f"/api/video/{video.pk}/thumbnail/",
+            response.data[0]["thumbnail_url"],
+        )
+
+    def test_ready_video_without_thumbnail_returns_404(self):
+        self.client.force_authenticate(user=self.user)
+        video = Video.objects.create(
+            title="No Thumbnail",
+            description="Test",
+            category="Drama",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+
+        response = self.client.get(f"/api/video/{video.pk}/thumbnail/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_hls_segment_returns_404(self):
+        self.client.force_authenticate(user=self.user)
+        video = Video.objects.create(
+            title="Missing Segment",
+            description="Test",
+            category="Drama",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+
+        response = self.client.get(f"/api/video/{video.pk}/720p/999.ts/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_segment_path_rejects_traversal_and_invalid_resolution(self):
+        self.assertIsNone(get_segment_path(1, "720p", "../secret.ts"))
+        self.assertIsNone(get_segment_path(1, "999p", "000.ts"))
+
+    def test_video_string_representation_is_title(self):
+        video = Video(title="Readable title", category="Drama")
+
+        self.assertEqual(str(video), "Readable title")
+
+    @patch("videos.signals.django_rq.enqueue")
+    def test_replacing_source_requeues_processing(self, mock_enqueue):
+        video = Video.objects.create(
+            title="Replace Source",
+            description="Test",
+            category="Drama",
+            original_file="videos/originals/old.mp4",
+            thumbnail="videos/thumbnails/old.jpg",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+        mock_enqueue.reset_mock()
+        self._create_generated_media(video)
+        old_source = self.media_root / "videos" / "originals" / "old.mp4"
+        old_source.parent.mkdir(parents=True, exist_ok=True)
+        old_source.write_bytes(b"old-source")
+        video.original_file = SimpleUploadedFile("new.mp4", b"new-source")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            video.save(update_fields=["original_file"])
+
+        video.refresh_from_db()
+        self.assertEqual(video.processing_status, Video.ProcessingStatus.PENDING)
+        self.assertFalse(bool(video.thumbnail))
+        self.assertFalse(old_source.exists())
+        self.assertFalse((self.media_root / "videos" / str(video.pk)).exists())
+        mock_enqueue.assert_called_once_with(process_video, video.pk)
+
+    @patch("videos.signals.django_rq.enqueue")
+    def test_deleting_video_removes_owned_media(self, mock_enqueue):
+        video = Video.objects.create(
+            title="Delete Media",
+            description="Test",
+            category="Drama",
+            original_file="videos/originals/delete.mp4",
+            thumbnail="videos/thumbnails/delete.jpg",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+        mock_enqueue.reset_mock()
+        source_path = self.media_root / video.original_file.name
+        thumbnail_path = self.media_root / video.thumbnail.name
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_bytes(b"source")
+        thumbnail_path.write_bytes(b"thumbnail")
+        self._create_generated_media(video)
+        video_root = self.media_root / "videos" / str(video.pk)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            video.delete()
+
+        self.assertFalse(source_path.exists())
+        self.assertFalse(thumbnail_path.exists())
+        self.assertFalse(video_root.exists())
+
+    def _create_generated_media(self, video):
+        hls_dir = self.media_root / "videos" / str(video.pk) / "720p"
+        hls_dir.mkdir(parents=True, exist_ok=True)
+        (hls_dir / "index.m3u8").write_text("#EXTM3U", encoding="utf-8")
+        thumbnail_path = self.media_root / video.thumbnail.name
+        thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
+        thumbnail_path.write_bytes(b"thumbnail")

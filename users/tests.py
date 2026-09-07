@@ -234,3 +234,132 @@ class AuthTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         refresh_response = self.client.post("/api/token/refresh/")
         self.assertEqual(refresh_response.status_code, 400)
+
+    def test_registration_rejects_password_mismatch(self):
+        data = self.registration_data()
+        data["confirmed_password"] = "DifferentStrongPassword123!"
+
+        response = self.client.post("/api/register/", data, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(email=self.email).exists())
+
+    def test_registration_rejects_weak_password(self):
+        data = {
+            "email": self.email,
+            "password": "password",
+            "confirmed_password": "password",
+        }
+
+        response = self.client.post("/api/register/", data, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(email=self.email).exists())
+
+    def test_active_duplicate_registration_is_rejected(self):
+        self.create_user(is_active=True)
+
+        response = self.client.post(
+            "/api/register/",
+            self.registration_data(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.filter(email=self.email).count(), 1)
+
+    def test_invalid_activation_token_is_rejected(self):
+        user = self.create_user(is_active=False)
+        uid, _ = self.token_credentials(user)
+
+        response = self.client.get(f"/api/activate/{uid}/invalid-token/")
+
+        user.refresh_from_db()
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(user.is_active)
+
+    def test_invalid_activation_uid_is_rejected(self):
+        response = self.client.get(
+            "/api/activate/not-a-valid-uid/invalid-token/",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_password_reset_token_is_rejected(self):
+        user = self.create_user()
+        uid, _ = self.token_credentials(user)
+        data = self.password_confirm_data("NewStrongPassword123!")
+
+        response = self.client.post(
+            f"/api/password_confirm/{uid}/invalid-token/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(user.check_password(self.password))
+
+    def test_password_confirm_rejects_mismatched_passwords(self):
+        user = self.create_user()
+        uid, token = self.token_credentials(user)
+        data = {
+            "new_password": "NewStrongPassword123!",
+            "confirm_password": "DifferentStrongPassword123!",
+        }
+
+        response = self.client.post(
+            f"/api/password_confirm/{uid}/{token}/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_password_confirm_rejects_weak_password(self):
+        user = self.create_user()
+        uid, token = self.token_credentials(user)
+        data = self.password_confirm_data("password")
+
+        response = self.client.post(
+            f"/api/password_confirm/{uid}/{token}/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_refresh_without_cookie_is_rejected(self):
+        response = self.client.post("/api/token/refresh/")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_refresh_with_invalid_cookie_is_rejected(self):
+        self.client.cookies["refresh_token"] = "invalid-token"
+
+        response = self.client.post("/api/token/refresh/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_logout_without_cookie_is_rejected(self):
+        response = self.client.post("/api/logout/")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_logout_with_invalid_cookie_is_rejected(self):
+        self.client.cookies["refresh_token"] = "invalid-token"
+
+        response = self.client.post("/api/logout/")
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(JWT_COOKIE_SECURE=True, JWT_COOKIE_SAMESITE="Lax")
+    def test_login_sets_secure_http_only_cookies(self):
+        self.create_user()
+
+        response = self.login()
+
+        for cookie_name in ("access_token", "refresh_token"):
+            cookie = response.cookies[cookie_name]
+            self.assertTrue(cookie["httponly"])
+            self.assertTrue(cookie["secure"])
+            self.assertEqual(cookie["samesite"], "Lax")

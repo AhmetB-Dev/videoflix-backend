@@ -1,5 +1,6 @@
 """Helpers for video caching and safe access to HLS manifests and segments."""
 
+import shutil
 from pathlib import Path
 
 from django.conf import settings
@@ -62,6 +63,36 @@ def cache_video_list(data):
 def clear_video_list_cache():
     """Invalidate the cached dashboard video list."""
     cache.delete(VIDEO_LIST_CACHE_KEY)
+
+
+def delete_generated_video_media(
+    video_id,
+    thumbnail_storage=None,
+    thumbnail_name=None,
+):
+    """Delete generated thumbnail and HLS files for a video."""
+    if thumbnail_storage is not None and thumbnail_name:
+        thumbnail_storage.delete(thumbnail_name)
+
+    hls_root = Path(settings.MEDIA_ROOT) / "videos" / str(video_id)
+    shutil.rmtree(hls_root, ignore_errors=True)
+
+
+def delete_video_media(
+    video_id,
+    original_storage,
+    original_name,
+    thumbnail_storage=None,
+    thumbnail_name=None,
+):
+    """Delete source and generated media belonging to a deleted video."""
+    delete_generated_video_media(
+        video_id,
+        thumbnail_storage,
+        thumbnail_name,
+    )
+    if original_name:
+        original_storage.delete(original_name)
 
 
 def get_ready_video(movie_id):
