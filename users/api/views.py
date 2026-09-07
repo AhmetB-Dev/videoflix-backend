@@ -117,7 +117,10 @@ class RefreshTokenView(APIView):
         access_token = try_create_access_token(token)
         if access_token is None:
             return Response(INVALID_REFRESH_TOKEN, status=status.HTTP_401_UNAUTHORIZED)
-        response = Response({"detail": "Token refreshed", "access": access_token})
+        response = Response(
+            {"detail": "Token refreshed"},
+            status=status.HTTP_200_OK,
+        )
         set_access_cookie(response, access_token)
         return response
 
@@ -188,8 +191,12 @@ class RegisterView(APIView):
         user = serializer.save()
         uid, token = create_activation_credentials(user)
         send_activation_email(user, uid, token)
-        data = {
-            "user": {"id": user.id, "email": user.email},
-            "token": token,
-        }
-        return Response(data, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "detail": (
+                    "Registration successful. Please check your email "
+                    "to activate your account."
+                )
+            },
+            status=status.HTTP_201_CREATED,
+        )

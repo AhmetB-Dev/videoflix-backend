@@ -69,6 +69,25 @@ class AuthTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.email])
 
+    def test_registration_does_not_expose_activation_credentials(self):
+        response = self.client.post(
+            "/api/register/",
+            self.registration_data(),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data,
+            {
+                "detail": (
+                    "Registration successful. Please check your email "
+                    "to activate your account."
+                )
+            },
+        )
+        self.assertNotIn("token", response.data)
+        self.assertNotIn("uid", response.data)
+
     def test_activation_activates_user(self):
         user = self.create_user(is_active=False)
         uid, token = self.token_credentials(user)
@@ -135,6 +154,8 @@ class AuthTests(APITestCase):
         self.login()
         response = self.client.post("/api/token/refresh/")
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, {"detail": "Token refreshed"})
+        self.assertNotIn("access", response.data)
         self.assertIn("access_token", response.cookies)
 
     def test_logout_invalidates_refresh_token(self):

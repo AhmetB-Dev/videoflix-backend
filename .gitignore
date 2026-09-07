@@ -12,4 +12,3 @@ media/
 htmlcov/
 .env.production
 .env.local
-.gitattributes

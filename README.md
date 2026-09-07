@@ -28,6 +28,9 @@ I implemented the backend architecture and application logic, including authenti
 - HLS streaming in 480p, 720p, and 1080p
 - Automated thumbnail generation
 - Docker / Docker Compose
+- Separate web and Django RQ worker containers
+- GitHub Actions CI/CD
+- GHCR immutable production images
 - Gunicorn production server
 - HTTPS-ready production deployment
 - Automated backend test suite
@@ -96,6 +99,7 @@ docker compose exec web python manage.py test
 - Email-based account activation
 - Login using email and password
 - JWT authentication with HttpOnly cookies
+- JWTs are not exposed in registration or refresh response bodies
 - Access and refresh tokens
 - Access-token refresh flow
 - Refresh-token blacklisting on logout
@@ -196,6 +200,13 @@ SMTP credentials and sender configuration are stored through environment variabl
 - `unittest.mock`
 
 ---
+
+
+### CI/CD
+
+Every pull request and push is validated in Docker. The pipeline runs Django system checks, the full test suite, and enforces at least 95% test coverage. Successful pushes to `main` build one production image, publish it to GitHub Container Registry, and deploy that immutable image to the VPS over SSH.
+
+The production Compose stack keeps PostgreSQL and Redis private and binds Gunicorn only to `127.0.0.1:8000`, leaving Nginx as the public HTTPS entry point.
 
 ## Architecture
 
@@ -346,7 +357,7 @@ refresh_token
 
 as HttpOnly cookies.
 
-The access token protects API requests. The refresh token can be used to create a new access token.
+The access token protects API requests. The refresh token can be used to create a new access token. Tokens are kept in HttpOnly cookies and are not returned in registration or refresh JSON responses.
 
 ### Logout
 
@@ -384,13 +395,7 @@ Run all automated tests:
 docker compose exec web python manage.py test
 ```
 
-Current project status:
-
-```text
-25 automated tests
-All tests passing
-Coverage is measured with Coverage.py and can be generated locally with the commands below.
-```
+The automated test suite includes security regression tests for authentication and token handling. Coverage is measured with Coverage.py and can be generated locally with the commands below.
 
 Generate a coverage report:
 
@@ -488,7 +493,7 @@ Production deployments should use HTTPS, `DEBUG=False`, production-specific allo
 
 ## Production Deployment
 
-Production-specific configuration is documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Production deployment and the GitHub Actions CI/CD pipeline are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 The repository also contains `.env.production.example` with non-secret example values for an `ahmet-balci.de` / `api.ahmet-balci.de` deployment.
 

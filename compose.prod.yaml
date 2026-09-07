@@ -1,0 +1,89 @@
+name: videoflix-backend
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the exact PostgreSQL image/tag already used in production}
+    container_name: videoflix_database
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE:?Set REDIS_IMAGE to the exact Redis image/tag selected for production}
+    container_name: videoflix_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    image: ${APP_IMAGE:?APP_IMAGE must point to a published Videoflix image}
+    container_name: videoflix_backend
+    env_file: .env
+    environment:
+      PREPARE_STATIC_DIR: "True"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - videoflix_media:/app/media
+      - videoflix_static:/app/static
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('127.0.0.1',8000),2); s.close()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: ${APP_IMAGE:?APP_IMAGE must point to a published Videoflix image}
+    container_name: videoflix_worker
+    env_file: .env
+    command: ["python", "manage.py", "rqworker", "default"]
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - videoflix_media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  videoflix_media:
+  videoflix_static:
