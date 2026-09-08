@@ -1,6 +1,6 @@
 # Production Deployment
 
-This repository uses a Docker-first CI/CD flow:
+This repository uses the reusable workflows from `AhmetB-Dev/django-deployment-template` and a Docker-first CI/CD flow:
 
 1. Pull requests and pushes run Ruff, `pip-audit`, Django checks including a production-style `check --deploy`, the complete test suite, and a 95% coverage gate.
 2. A successful push to `main` builds one immutable application image.
@@ -15,8 +15,8 @@ Database migrations are still applied by the web startup command. Image rollback
 Production deliberately does not choose a PostgreSQL or Redis major version automatically. Before the first deployment, check the versions currently running on the VPS and set `POSTGRES_IMAGE` and `REDIS_IMAGE` in the production `.env`.
 
 ```bash
-docker exec videoflix_database postgres --version
-docker exec videoflix_redis redis-server --version
+docker compose -f compose.prod.yaml exec db postgres --version
+docker compose -f compose.prod.yaml exec redis redis-server --version
 ```
 
 Do not perform a PostgreSQL major upgrade by only changing the Docker image tag. Plan and test the database upgrade separately. The local and CI stacks use explicit fresh-environment defaults and do not reuse production database volumes.
@@ -30,7 +30,7 @@ Internet
 Host Nginx / TLS
    |
    v
-127.0.0.1:8000
+127.0.0.1:${APP_PORT} (8000 by default for the existing Videoflix VPS)
    |
    +--> web (Gunicorn / Django)
    |
@@ -43,7 +43,7 @@ PostgreSQL and Redis are not published to the host. Gunicorn is published only o
 
 ## One-time VPS preparation
 
-The VPS must already have Docker Engine, Docker Compose, Git, Nginx and TLS configured.
+The VPS must already have Docker Engine, Docker Compose, Git, Nginx and TLS configured. Videoflix keeps its own Compose project name, volumes, network and port so it can coexist with other Django deployments on the same server.
 
 Keep the repository at a stable path, for example:
 
@@ -61,22 +61,23 @@ nano .env
 Before switching an existing database container to the pinned PostgreSQL image, verify the currently running major version:
 
 ```bash
-docker exec videoflix_database postgres --version
+docker compose -f compose.prod.yaml exec db postgres --version
 ```
 
 Set `POSTGRES_IMAGE` to the exact image family compatible with the existing production data directory. If a major-version upgrade is desired later, perform it as a separate, tested database migration.
 
 ## GitHub Actions configuration
 
-Create a GitHub environment named `production`.
+The small project workflow in `.github/workflows/cicd.yml` calls the central reusable CI, publish, and deploy workflows. While the deployment template is still being tested, the project references `@main`; after the first stable release it should be pinned to a version tag or commit SHA.
 
-Repository/environment variables:
+Repository variables:
 
-- `VPS_HOST` - VPS hostname or IP
 - `VPS_USER` - SSH user, for example `ahmet`
 - `VPS_APP_DIR` - repository path on the VPS, for example `/home/ahmet/apps/videoflix-backend`
 
-Secrets:
+Repository secrets:
+
+- `VPS_HOST` - VPS hostname or IP
 
 - `VPS_SSH_PRIVATE_KEY` - private key dedicated to GitHub Actions deployment
 - `VPS_KNOWN_HOSTS` - trusted SSH host-key line for the VPS
@@ -91,7 +92,7 @@ For a manual first start, set an image and run:
 
 ```bash
 export APP_IMAGE=ghcr.io/<owner>/<repo>:latest
-docker compose -f compose.prod.yaml up -d
+docker compose -f compose.prod.yaml up -d --wait
 ```
 
 Check status and logs:
@@ -110,7 +111,7 @@ docker compose up --build
 
 Services:
 
-- Django development server: `http://127.0.0.1:8000`
+- Django development server: `http://127.0.0.1:${APP_PORT} (8000 by default for the existing Videoflix VPS)`
 - PostgreSQL: internal Docker network only
 - Redis: internal Docker network only
 - RQ worker: separate container

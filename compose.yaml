@@ -1,9 +1,6 @@
-name: videoflix-backend
-
 services:
   db:
     image: ${POSTGRES_IMAGE:-postgres:18-alpine}
-    container_name: videoflix_database
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -19,7 +16,6 @@ services:
 
   redis:
     image: ${REDIS_IMAGE:-redis:8-alpine}
-    container_name: videoflix_redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -34,14 +30,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: videoflix_backend
     env_file: .env
     command: ["/app/docker/start-dev.sh"]
     volumes:
       - .:/app
       - videoflix_media:/app/media
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -53,7 +48,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: videoflix_worker
     env_file: .env
     command: ["python", "manage.py", "rqworker", "default"]
     volumes:

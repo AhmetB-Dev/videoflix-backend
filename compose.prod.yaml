@@ -1,9 +1,6 @@
-name: videoflix-backend
-
 services:
   db:
     image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the exact PostgreSQL image/tag already used in production}
-    container_name: videoflix_database
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -19,7 +16,6 @@ services:
 
   redis:
     image: ${REDIS_IMAGE:?Set REDIS_IMAGE to the exact Redis image/tag selected for production}
-    container_name: videoflix_redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -32,7 +28,6 @@ services:
 
   web:
     image: ${APP_IMAGE:?APP_IMAGE must point to a published Videoflix image}
-    container_name: videoflix_backend
     env_file: .env
     environment:
       PREPARE_STATIC_DIR: "True"
@@ -44,7 +39,7 @@ services:
       - videoflix_media:/app/media
       - videoflix_static:/app/static
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
     healthcheck:
       test:
         [
@@ -66,7 +61,6 @@ services:
 
   worker:
     image: ${APP_IMAGE:?APP_IMAGE must point to a published Videoflix image}
-    container_name: videoflix_worker
     env_file: .env
     command: ["python", "manage.py", "rqworker", "default"]
     init: true

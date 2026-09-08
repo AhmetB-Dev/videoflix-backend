@@ -6,183 +6,38 @@ on:
     branches: [main]
 
 concurrency:
-  group: videoflix-${{ github.ref }}
+  group: ${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
-  quality:
-    name: Lint and dependency audit
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-ci.txt
-
-      - name: Install CI quality tools
-        run: python -m pip install -r requirements-ci.txt
-
-      - name: Run Ruff
-        run: ruff check .
-
-      - name: Audit Python dependencies
-        run: pip-audit --strict -r requirements.txt
-
-  test:
-    name: Test backend in Docker
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Run Django checks, tests and coverage gate
-        run: |
-          docker compose -f compose.ci.yaml up \
-            --build \
-            --abort-on-container-exit \
-            --exit-code-from test
-
-      - name: Clean up CI containers
-        if: always()
-        run: docker compose -f compose.ci.yaml down -v --remove-orphans
+  ci:
+    name: CI
+    uses: AhmetB-Dev/django-deployment-template/.github/workflows/reusable-ci.yml@main
 
   publish:
-    name: Build and publish production image
+    name: Publish image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [quality, test]
-    runs-on: ubuntu-latest
-
+    needs: ci
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
-
-    outputs:
-      image: ${{ steps.image.outputs.image }}
-      digest: ${{ steps.build.outputs.digest }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Resolve lowercase image name
-        id: image
-        shell: bash
-        run: |
-          image="${REGISTRY}/${GITHUB_REPOSITORY,,}"
-          echo "image=$image" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push immutable production image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.image }}:sha-${{ github.sha }}
-            ${{ steps.image.outputs.image }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: mode=max
-          sbom: true
-
-      - name: Attest production image
-        uses: actions/attest@v4
-        with:
-          subject-name: ${{ steps.image.outputs.image }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
+    uses: AhmetB-Dev/django-deployment-template/.github/workflows/reusable-publish.yml@main
 
   deploy:
-    name: Deploy to production VPS
+    name: Deploy production
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: publish
-    runs-on: ubuntu-latest
-    environment: production
-
     permissions:
       contents: read
       packages: read
-
-    steps:
-      - name: Validate deployment configuration
-        shell: bash
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-          VPS_USER: ${{ vars.VPS_USER }}
-          VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
-        run: |
-          test -n "$VPS_HOST" || { echo "VPS_HOST is missing"; exit 1; }
-          test -n "$VPS_SSH_PRIVATE_KEY" || { echo "VPS_SSH_PRIVATE_KEY is missing"; exit 1; }
-          test -n "$VPS_KNOWN_HOSTS" || { echo "VPS_KNOWN_HOSTS is missing"; exit 1; }
-          test -n "$VPS_USER" || { echo "VPS_USER is missing"; exit 1; }
-          test -n "$VPS_APP_DIR" || { echo "VPS_APP_DIR is missing"; exit 1; }
-
-      - name: Configure SSH
-        shell: bash
-        env:
-          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Log VPS in to GHCR for this deployment
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
-        run: |
-          printf '%s' "$GH_TOKEN" | ssh \
-            -o BatchMode=yes \
-            -i ~/.ssh/id_ed25519 \
-            "$VPS_USER@$VPS_HOST" \
-            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
-
-      - name: Deploy immutable image
-        shell: bash
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
-          VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
-          IMAGE: ${{ needs.publish.outputs.image }}:sha-${{ github.sha }}
-        run: |
-          ssh \
-            -o BatchMode=yes \
-            -i ~/.ssh/id_ed25519 \
-            "$VPS_USER@$VPS_HOST" \
-            "cd '$VPS_APP_DIR' && git pull --ff-only && ./scripts/deploy.sh '$IMAGE'"
+    uses: AhmetB-Dev/django-deployment-template/.github/workflows/reusable-deploy.yml@main
+    with:
+      vps-user: ${{ vars.VPS_USER }}
+      vps-app-dir: ${{ vars.VPS_APP_DIR }}
+      image: ${{ needs.publish.outputs.image }}:sha-${{ github.sha }}
+    secrets:
+      vps-host: ${{ secrets.VPS_HOST }}
+      vps-ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      vps-known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
