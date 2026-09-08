@@ -10,14 +10,14 @@ I implemented the backend architecture and application logic, including authenti
 - **Backend:** This repository
 - **Frontend source:** [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
 
-> **Frontend notice:**
-> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.
+> **Frontend notice:**  
+> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.  
 > My implementation focuses on the complete backend, API, authentication, video processing, caching, streaming, testing, and deployment.
 
 ---
 
 ## Highlights
-s
+
 - Django REST Framework backend
 - PostgreSQL database
 - JWT authentication with HttpOnly cookies

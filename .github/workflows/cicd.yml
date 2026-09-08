@@ -34,10 +34,5 @@ jobs:
       packages: read
     uses: AhmetB-Dev/django-devops-template/.github/workflows/reusable-deploy.yml@main
     with:
-      vps-user: ${{ vars.VPS_USER }}
-      vps-app-dir: ${{ vars.VPS_APP_DIR }}
+      environment: production
       image: ${{ needs.publish.outputs.image }}:sha-${{ github.sha }}
-    secrets:
-      vps-host: ${{ secrets.VPS_HOST }}
-      vps-ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-      vps-known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
