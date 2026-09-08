@@ -77,10 +77,16 @@ Repository variables:
 
 Repository secrets:
 
-- `VPS_HOST` - VPS hostname or IP
-
+- `VPS_HOST` - VPS hostname or IP only (for example `203.0.113.10`), without `ssh`, username, or `user@host` syntax
 - `VPS_SSH_PRIVATE_KEY` - private key dedicated to GitHub Actions deployment
 - `VPS_KNOWN_HOSTS` - trusted SSH host-key line for the VPS
+
+GitHub Environment:
+
+- keep an environment named `production`
+- restrict deployment branches/tags to `main`
+- use the environment as the production deployment gate
+- keep VPS credentials in repository secrets/variables rather than duplicating them as environment secrets/variables
 
 Do not put the production `.env`, SSH private key, database password, SMTP password, or Django secret key in the repository.
 
