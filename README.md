@@ -204,7 +204,7 @@ SMTP credentials and sender configuration are stored through environment variabl
 
 ### CI/CD
 
-Videoflix consumes the reusable CI/CD workflows from `AhmetB-Dev/django-deployment-template`. The project keeps only its own Docker/Compose requirements such as Redis, the RQ worker, FFmpeg/media handling, environment values and VPS deployment target.
+Videoflix consumes the reusable CI/CD workflows from `AhmetB-Dev/django-devops-template`. The project keeps only its own Docker/Compose requirements such as Redis, the RQ worker, FFmpeg/media handling, environment values and VPS deployment target.
 
 
 Every pull request and push is validated before publication. The pipeline runs Ruff, audits pinned Python dependencies with `pip-audit`, executes Django system checks including `check --deploy` with production-like security settings, runs the full test suite, and enforces at least 95% test coverage. Successful pushes to `main` build one production image, publish it to GitHub Container Registry, and deploy that immutable image to the VPS over SSH.

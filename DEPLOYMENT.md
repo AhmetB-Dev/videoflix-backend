@@ -1,6 +1,6 @@
 # Production Deployment
 
-This repository uses the reusable workflows from `AhmetB-Dev/django-deployment-template` and a Docker-first CI/CD flow:
+This repository uses the reusable workflows from `AhmetB-Dev/django-devops-template` and a Docker-first CI/CD flow:
 
 1. Pull requests and pushes run Ruff, `pip-audit`, Django checks including a production-style `check --deploy`, the complete test suite, and a 95% coverage gate.
 2. A successful push to `main` builds one immutable application image.
