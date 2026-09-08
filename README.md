@@ -3,15 +3,15 @@
 Videoflix is a Django REST Framework backend for a video streaming application.
 
 I implemented the backend architecture and application logic, including authentication, email activation and password recovery, PostgreSQL persistence, Redis caching, asynchronous background processing with Django RQ, FFmpeg-based video transcoding, thumbnail generation, and authenticated HLS streaming in multiple resolutions.
-
+test
 ## Project Links
 
 - **Live Demo:** https://ahmet-balci.de/projects/videoflix/
 - **Backend:** This repository
 - **Frontend source:** [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
 
-> **Frontend notice:**  
-> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.  
+> **Frontend notice:**
+> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.
 > My implementation focuses on the complete backend, API, authentication, video processing, caching, streaming, testing, and deployment.
 
 ---
