@@ -25,14 +25,28 @@ jobs:
       id-token: write
     uses: AhmetB-Dev/django-devops-template/.github/workflows/reusable-publish.yml@main
 
+  production-gate:
+    name: Production gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Authorize production deployment
+        run: echo "Production deployment authorized."
+
   deploy:
     name: Deploy production
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: publish
+    needs: [publish, production-gate]
     permissions:
       contents: read
       packages: read
     uses: AhmetB-Dev/django-devops-template/.github/workflows/reusable-deploy.yml@main
     with:
-      environment: production
       image: ${{ needs.publish.outputs.image }}:sha-${{ github.sha }}
+    secrets:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
