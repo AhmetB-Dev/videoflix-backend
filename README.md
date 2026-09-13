@@ -1,547 +1,153 @@
 # Videoflix Backend
 
-Videoflix is a Django REST Framework backend for a video streaming application.
+**Django REST backend for secure, asynchronous video processing and adaptive HLS streaming.**
 
-I implemented the backend architecture and application logic, including authentication, email activation and password recovery, PostgreSQL persistence, Redis caching, asynchronous background processing with Django RQ, FFmpeg-based video transcoding, thumbnail generation, and authenticated HLS streaming in multiple resolutions.
-## Project Links
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-6.1-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-Cache_%26_Queue-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Deployment-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-- **Live Demo:** https://ahmet-balci.de/projects/videoflix/
-- **Backend:** This repository
-- **Frontend source:** [Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
+[**Live Demo**](https://ahmet-balci.de/projects/videoflix/) · [**Provided Frontend**](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
 
-> **Frontend notice:**
-> The frontend used as the client interface was provided by Developer Akademie and is maintained separately.
-> My implementation focuses on the complete backend, API, authentication, video processing, caching, streaming, testing, and deployment.
+Videoflix turns uploaded source videos into protected multi-resolution streams. Processing runs outside the request cycle, while authenticated users receive thumbnails, HLS manifests and video segments through the API.
 
----
+> The frontend was provided by Developer Akademie. I implemented the complete backend architecture, API, authentication, email flows, caching, background processing, video transcoding, tests and production deployment.
 
-## Highlights
+## Engineering highlights
 
-- Django REST Framework backend
-- PostgreSQL database
-- JWT authentication with HttpOnly cookies
-- Email activation and password recovery
-- Redis caching
-- Asynchronous background jobs with Django RQ
-- FFmpeg video transcoding
-- HLS streaming in 480p, 720p, and 1080p
-- Automated thumbnail generation
-- Docker / Docker Compose
-- Separate web and Django RQ worker containers
-- GitHub Actions CI/CD
-- GHCR immutable production images
-- Gunicorn production server
-- HTTPS-ready production deployment
-- Automated backend test suite
+- **Asynchronous media pipeline:** Django RQ processes uploads without blocking API requests.
+- **Adaptive streaming:** FFmpeg generates thumbnails and HLS output in 480p, 720p and 1080p.
+- **Secure authentication:** JWT access and refresh tokens are stored in HttpOnly cookies.
+- **Protected media delivery:** catalogue data, thumbnails, manifests and segments require authentication.
+- **Efficient catalogue access:** Redis caches video lists and invalidates them when video data changes.
+- **Production automation:** CI checks quality, security and tests before publishing immutable Docker images.
 
----
+## How video processing works
 
-## Quick Start
+```mermaid
+flowchart TD
+    A[Video upload] --> B[Django signal]
+    B --> C[Django RQ]
+    C --> D[FFmpeg worker]
+    D --> E[Thumbnail]
+    D --> F[480p HLS]
+    D --> G[720p HLS]
+    D --> H[1080p HLS]
+    E --> I[Ready for streaming]
+    F --> I
+    G --> I
+    H --> I
+```
 
-### 1. Clone the repository
+Each video moves through `pending`, `processing`, `ready` or `failed`. Only successfully processed videos appear in the catalogue.
+
+## Core features
+
+### Authentication and accounts
+
+- Registration with email and password
+- Email-based account activation
+- Login and logout with HttpOnly JWT cookies
+- Access-token refresh
+- Refresh-token blacklisting
+- Password recovery by email
+- Generic responses for sensitive account flows to reduce account enumeration
+
+### Video delivery
+
+- Video upload through Django Admin
+- Background transcoding with FFmpeg
+- Automatic thumbnail generation
+- HLS manifests and segments for three resolutions
+- Authenticated catalogue and media endpoints
+- Newest-first catalogue ordering
+
+### Reliability
+
+- Redis-backed cache and task queue
+- Automatic catalogue-cache invalidation
+- Explicit processing states and failure handling
+- Separate web and worker containers
+
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Backend | Python 3.12, Django 6.1, Django REST Framework |
+| Authentication | Simple JWT, HttpOnly cookies, token blacklist |
+| Database | PostgreSQL |
+| Cache and queue | Redis, django-redis, Django RQ |
+| Media | FFmpeg, HLS, Pillow |
+| Testing | Django Test Framework, DRF APITestCase, Coverage.py |
+| Delivery | Docker, Gunicorn, Nginx, GitHub Actions, GHCR |
+
+## API overview
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/register/` | Create an inactive account |
+| `GET` | `/api/activate/<uidb64>/<token>/` | Activate an account |
+| `POST` | `/api/login/` | Authenticate and set JWT cookies |
+| `POST` | `/api/logout/` | Log out and blacklist the refresh token |
+| `POST` | `/api/token/refresh/` | Refresh authentication |
+| `POST` | `/api/password_reset/` | Request a password-reset email |
+| `GET` | `/api/video/` | List ready videos |
+| `GET` | `/api/video/<movie_id>/thumbnail/` | Retrieve a protected thumbnail |
+| `GET` | `/api/video/<movie_id>/<resolution>/index.m3u8` | Retrieve an HLS manifest |
+| `GET` | `/api/video/<movie_id>/<resolution>/<segment>/` | Retrieve an HLS segment |
+
+## Run locally
 
 ```bash
-git clone <YOUR_BACKEND_REPOSITORY_URL>
+git clone https://github.com/AhmetB-Dev/videoflix-backend.git
 cd videoflix-backend
-```
-
-### 2. Create the environment file
-
-Copy the example environment file:
-
-```bash
 cp .env.example .env
+docker compose up --build
 ```
 
-On Windows PowerShell:
+On Windows PowerShell, create the environment file with:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Configure the required values in `.env` using `.env.example` as the source of truth for all available environment variables.
+The local services are available at:
 
-Never commit the real `.env` file or production credentials.
+- API: `http://127.0.0.1:8000/api/`
+- Django Admin: `http://127.0.0.1:8000/admin/`
 
-### 3. Start the application
+Use [`.env.example`](./.env.example) as the source of truth for configuration. Never commit real credentials.
 
-```bash
-docker compose up --build
-```
-
-The backend API is available locally at:
-
-```text
-http://127.0.0.1:8000/api/
-```
-
-The Django administration interface is available locally at:
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
-### 4. Run the test suite
+## Tests and delivery
 
 ```bash
 docker compose exec web python manage.py test
 ```
 
----
+The test suite covers account flows, JWT handling, protected media access, caching, cache invalidation, email delivery, background processing and failure states.
 
-## Features
+The CI/CD pipeline:
 
-### Authentication & Account Management
+1. runs Ruff and dependency auditing;
+2. executes Django production checks;
+3. runs the full test suite with a minimum coverage threshold;
+4. builds and publishes one immutable production image;
+5. deploys that image to the VPS.
 
-- User registration with email and password
-- Inactive accounts until email activation
-- Email-based account activation
-- Login using email and password
-- JWT authentication with HttpOnly cookies
-- JWTs are not exposed in registration or refresh response bodies
-- Access and refresh tokens
-- Access-token refresh flow
-- Refresh-token blacklisting on logout
-- Password reset via email
-- Token-based password confirmation
-- Generic authentication responses where appropriate to reduce account enumeration
+## Security and production
 
-### Video Management
-
-- Video upload through Django Admin
-- Processing status tracking:
-  - `pending`
-  - `processing`
-  - `ready`
-  - `failed`
-- Only successfully processed videos are exposed through the video catalogue
-- Videos are returned newest first using `created_at DESC`
-
-### Video Processing
-
-- Asynchronous video processing with Django RQ
-- Redis-backed task queue
-- FFmpeg-based transcoding
-- Automatic thumbnail generation
-- HLS output in:
-  - `480p`
-  - `720p`
-  - `1080p`
-- HLS manifests (`.m3u8`)
-- HLS transport stream segments (`.ts`)
-- Failed processing jobs update the video status accordingly
-
-### Streaming
-
-Authenticated users can access:
-
-- the video catalogue
-- generated thumbnails
-- HLS manifests
-- HLS video segments
-
-Streaming endpoints are protected by JWT authentication.
-
-### Redis Caching
-
-Redis is used as a Django caching layer for the video catalogue.
-
-The video list is cached after retrieval and automatically invalidated when video data changes, ensuring that clients receive fresh catalogue data without unnecessary database queries.
-
-### Email Delivery
-
-The backend supports real SMTP delivery for:
-
-- account activation
-- password reset
-
-Emails are available as HTML and plain-text alternatives.
-
-SMTP credentials and sender configuration are stored through environment variables.
-
----
-
-## Technology Stack
-
-### Backend
-
-- Python 3.12
-- Django 6.1
-- Django REST Framework
-- PostgreSQL
-
-### Authentication & Security
-
-- Simple JWT
-- HttpOnly cookies
-- Refresh-token blacklist
-- Django password hashing and validation
-- CORS configuration
-- CSRF trusted origins
-- Environment-based secrets
-
-### Processing & Infrastructure
-
-- Redis
-- django-redis
-- Django RQ
-- FFmpeg
-- Gunicorn
-- WhiteNoise
-- Docker
-- Docker Compose
-
-### Testing
-
-- Django Test Framework
-- Django REST Framework `APITestCase`
-- Coverage.py
-- `unittest.mock`
-
----
-
-
-### CI/CD
-
-Videoflix consumes the reusable CI/CD workflows from `AhmetB-Dev/django-devops-template`. The project keeps only its own Docker/Compose requirements such as Redis, the RQ worker, FFmpeg/media handling, environment values and VPS deployment target.
-
-
-Every pull request and push is validated before publication. The pipeline runs Ruff, audits pinned Python dependencies with `pip-audit`, executes Django system checks including `check --deploy` with production-like security settings, runs the full test suite, and enforces at least 95% test coverage. Successful pushes to `main` build one production image, publish it to GitHub Container Registry, and deploy that immutable image to the VPS over SSH.
-
-The production Compose stack keeps PostgreSQL and Redis private and binds Gunicorn only to `127.0.0.1:8000`, leaving Nginx as the public HTTPS entry point.
-
-## Architecture
-
-```text
-Frontend
-   │
-   │ REST API / HttpOnly JWT Cookies
-   ▼
-Django REST Framework
-   │
-   ├── Users
-   │   ├── Registration
-   │   ├── Recoverable RQ Activation Email Delivery
-   │   ├── Email Activation
-   │   ├── Login / Logout
-   │   ├── Token Refresh
-   │   └── Password Reset
-   │
-   ├── Videos
-   │   ├── Catalogue API
-   │   ├── Redis Cache
-   │   └── Authenticated HLS Streaming
-   │
-   ▼
-PostgreSQL
-```
-
-### Video Processing Pipeline
-
-```text
-Video Upload
-    │
-    ▼
-Django Admin
-    │
-    ▼
-post_save Signal
-    │
-    ▼
-Django RQ
-    │
-    ▼
-Redis Queue
-    │
-    ▼
-Background Worker
-    │
-    ▼
-FFmpeg
-    ├── Thumbnail
-    ├── 480p HLS
-    ├── 720p HLS
-    └── 1080p HLS
-    │
-    ▼
-Processing Status: READY
-    │
-    ▼
-Available through the REST API
-```
-
-### Video Catalogue Cache
-
-```text
-GET /api/video/
-      │
-      ▼
-Redis Cache
-   │       │
- HIT      MISS
-   │       │
-   │       ▼
-   │   PostgreSQL
-   │       │
-   │       ▼
-   │   Cache Result
-   │       │
-   └───────┘
-      │
-      ▼
-   Response
-```
-
-When a video is created, changed, or deleted, the cached catalogue is invalidated automatically.
-
----
-
-## API Overview
-
-### Authentication
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/api/register/` | Register a new inactive user |
-| `GET` | `/api/activate/<uidb64>/<token>/` | Activate an account |
-| `POST` | `/api/login/` | Authenticate and set JWT cookies |
-| `POST` | `/api/logout/` | Logout and invalidate the refresh token |
-| `POST` | `/api/token/refresh/` | Create a new access token |
-| `POST` | `/api/password_reset/` | Request a password-reset email |
-| `POST` | `/api/password_confirm/<uidb64>/<token>/` | Set a new password |
-
-### Videos
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/video/` | Retrieve all ready videos |
-| `GET` | `/api/video/<movie_id>/thumbnail/` | Retrieve an authenticated thumbnail |
-| `GET` | `/api/video/<movie_id>/<resolution>/index.m3u8` | Retrieve an HLS manifest |
-| `GET` | `/api/video/<movie_id>/<resolution>/<segment>/` | Retrieve an HLS segment |
-
-The video endpoints require authentication.
-
-Supported streaming resolutions:
-
-```text
-480p
-720p
-1080p
-```
-
----
-
-## Authentication Flow
-
-### Registration
-
-```text
-Registration
-    ↓
-Inactive User
-    ↓
-Activation Email
-    ↓
-Activation Link
-    ↓
-Account Activated
-    ↓
-Login Available
-```
-
-### Login
-
-After successful authentication, the backend stores:
-
-```text
-access_token
-refresh_token
-```
-
-as HttpOnly cookies.
-
-The access token protects API requests. The refresh token can be used to create a new access token. Tokens are kept in HttpOnly cookies and are not returned in registration or refresh JSON responses.
-
-### Logout
-
-On logout:
-
-- the refresh token is blacklisted
-- authentication cookies are deleted
-- the blacklisted refresh token can no longer be used
-
-### Password Reset
-
-```text
-Password Reset Request
-        ↓
-Generic API Response
-        ↓
-Reset Email
-        ↓
-UID + Token
-        ↓
-New Password
-        ↓
-Password Updated
-```
-
-The reset request returns the same public response whether or not an email address exists.
-
----
-
-## Testing & Coverage
-
-Run all automated tests:
-
-```bash
-docker compose exec web python manage.py test
-```
-
-The automated test suite includes security regression tests for authentication and token handling. Coverage is measured with Coverage.py and can be generated locally with the commands below.
-
-Generate a coverage report:
-
-```bash
-docker compose exec web coverage run manage.py test
-docker compose exec web coverage report -m
-```
-
-The automated test suite covers areas including:
-
-- user registration
-- account activation
-- activation email generation and background delivery
-- safe activation-email retry for matching inactive accounts
-- registration behavior when activation-email queueing fails
-- active and inactive login behavior
-- JWT cookie creation
-- token refresh
-- logout and refresh-token invalidation
-- password-reset emails
-- password confirmation
-- authenticated and unauthenticated video access
-- authenticated thumbnail delivery
-- ready-video filtering
-- newest-first video ordering
-- Redis caching
-- automatic cache invalidation
-- authenticated HLS manifests
-- authenticated HLS segments
-- invalid HLS resolutions
-- unknown video requests
-- successful background video processing
-- failed FFmpeg processing
-- processing-status transitions
-
-The video-processing task module currently reaches 100% statement coverage.
-
----
-
-## Environment Variables
-
-The application reads sensitive and environment-specific configuration from `.env`.
-
-Important categories include:
-
-- Django secret key and debug mode
-- allowed hosts and trusted origins
-- frontend URL
-- PostgreSQL credentials
-- Redis configuration
-- SMTP server and credentials
-- default email sender
-
-The real `.env` file must remain outside version control.
-
-Use `.env.example` as the configuration template.
-
----
-
-## Security
-
-The backend includes several security measures:
-
-- Django password hashing
-- Django password validation
-- JWT authentication
 - HttpOnly authentication cookies
-- configurable Secure and SameSite cookie settings
-- refresh-token blacklisting
-- global authenticated-by-default DRF permissions
-- explicitly public authentication/account endpoints
-- protected video, thumbnail, and HLS endpoints
-- generic responses for sensitive account flows
-- server-side validation of HLS segment paths
-- environment variables for secrets and credentials
-- environment-driven CORS restrictions
-- secure session and CSRF cookies when `DEBUG=False`
-- reverse-proxy HTTPS awareness
-- CSRF trusted-origin configuration
-- inactive accounts until email verification
+- Refresh-token invalidation
+- Authenticated-by-default API permissions
+- Protected thumbnails and HLS files
+- Server-side validation of requested segment paths
+- Environment-driven origins, hosts and secrets
+- Private PostgreSQL and Redis services
+- Nginx as the public HTTPS entry point
 
-Production deployments should use HTTPS, `DEBUG=False`, production-specific allowed hosts, trusted origins, secure cookies, and protected production credentials.
+Production details are documented in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ---
 
-## Development Notes
-
-- Uploaded source videos, generated thumbnails, and HLS files should remain outside version control.
-- Redis is used both for background job processing and application caching.
-- PostgreSQL is used as the application database.
-- Video processing runs asynchronously so FFmpeg work does not block normal API requests.
-- The API and frontend are maintained as separate applications.
-- `.m3u8` manifests and `.ts` segments are served only for authenticated users.
-- The provided frontend is used to demonstrate and interact with this backend implementation.
-
----
-
-## Production Deployment
-
-Production deployment and the GitHub Actions CI/CD pipeline are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
-
-The repository also contains `.env.production.example` with non-secret placeholder values for a production deployment.
-
-Important production principles:
-
-- keep `DEBUG=False`
-- keep the real `.env` outside version control
-- use HTTPS through a reverse proxy
-- do not expose PostgreSQL, Redis, or port `8000` publicly
-- do not expose the complete `/media/` directory directly
-- run `python manage.py check --deploy` before going live
-
----
-
-## Deployment Experience
-
-This project was not only developed locally but also prepared for and deployed in a production-oriented environment.
-
-The deployment setup includes:
-
-- Docker and Docker Compose
-- Gunicorn
-- PostgreSQL
-- Redis
-- HTTPS / reverse-proxy setup
-- environment-based production configuration
-- secure handling of application secrets
-- production deployment checks
-
-This provided practical experience with backend deployment and DevOps-related workflows in addition to application development.
-
----
-
-## Frontend Repository
-
-The client interface used with this backend is available here:
-
-[Developer Akademie – project.Videoflix](https://github.com/Developer-Akademie-Backendkurs/project.Videoflix)
-
----
-
-## Live Demo
-
-The deployed project is available here:
-
-**https://ahmet-balci.de/projects/videoflix/**
+Built as part of my Fullstack Developer portfolio.
